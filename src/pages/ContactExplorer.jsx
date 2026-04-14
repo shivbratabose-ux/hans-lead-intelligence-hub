@@ -1,10 +1,10 @@
-import { useState, useMemo } from 'react';
-import { Download, Mail, Phone, Link2, Filter, X, Search, SlidersHorizontal, Globe, Building2, Tag, Users, BarChart3 } from 'lucide-react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
+import { Download, Mail, Phone, Link2, Filter, X, Search, SlidersHorizontal, Globe, Building2, Tag, Users, BarChart3, ShieldAlert, Lock, Clock, CheckCircle } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
-import {
-  ALL_CONTACTS, INDUSTRY_SUMMARY, INDUSTRY_COLORS, INDUSTRY_ICONS, INDUSTRY_PRODUCTS,
-  FILTER_COUNTRIES, FILTER_REGIONS, FILTER_CONTACT_TYPES, FILTER_SOURCES
-} from '../data/realContacts';
+import { useAuth } from '../auth/AuthContext';
+import { fetchContacts, fetchContactsForExport, fetchContactsSummary, fetchFilterOptions } from '../lib/contactsApi';
+import { INDUSTRY_COLORS, INDUSTRY_ICONS, INDUSTRY_PRODUCTS } from '../data/realContacts';
+import { supabase } from '../lib/supabase';
 import './ContactExplorer.css';
 
 const PER_PAGE = 30;
@@ -41,6 +41,10 @@ function AnalyticsBar({ items, maxVal, color }) {
 }
 
 export default function ContactExplorer() {
+  const { user, isAdmin } = useAuth();
+  const canExport = isAdmin || user?.role === 'Sales Manager';
+
+  // Filters
   const [selectedIndustry, setSelectedIndustry] = useState('');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -51,34 +55,65 @@ export default function ContactExplorer() {
   const [emailFilter, setEmailFilter] = useState('');
   const [phoneFilter, setPhoneFilter] = useState('');
 
-  const activeFilterCount = [selectedIndustry, countryFilter, regionFilter, typeFilter, sourceFilter, emailFilter, phoneFilter].filter(Boolean).length + (search ? 1 : 0);
+  // Data from Supabase
+  const [contacts, setContacts] = useState([]);
+  const [totalFiltered, setTotalFiltered] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [summary, setSummary] = useState(null);
+  const [filterOptions, setFilterOptions] = useState({ countries: [], regions: [], contactTypes: [], sources: [] });
 
-  const filtered = useMemo(() => {
-    let list = ALL_CONTACTS;
-    if (selectedIndustry) list = list.filter(c => c.industry === selectedIndustry);
-    if (countryFilter) list = list.filter(c => c.country === countryFilter);
-    if (regionFilter) list = list.filter(c => c.region === regionFilter);
-    if (typeFilter) list = list.filter(c => c.contactType === typeFilter);
-    if (sourceFilter) list = list.filter(c => c.source === sourceFilter);
-    if (emailFilter === 'yes') list = list.filter(c => c.email && c.email.includes('@'));
-    if (emailFilter === 'no') list = list.filter(c => !c.email || !c.email.includes('@'));
-    if (phoneFilter === 'yes') list = list.filter(c => c.phone && c.phone.length > 4);
-    if (phoneFilter === 'no') list = list.filter(c => !c.phone || c.phone.length <= 4);
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      list = list.filter(c =>
-        (c.name && c.name.toLowerCase().includes(q)) ||
-        (c.company && c.company.toLowerCase().includes(q)) ||
-        (c.email && c.email.toLowerCase().includes(q)) ||
-        (c.location && c.location.toLowerCase().includes(q)) ||
-        (c.title && c.title.toLowerCase().includes(q))
-      );
-    }
-    return list;
-  }, [selectedIndustry, search, countryFilter, regionFilter, typeFilter, sourceFilter, emailFilter, phoneFilter]);
+  // Export gate
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
+  const [exportRequestSent, setExportRequestSent] = useState(false);
 
-  const totalPages = Math.ceil(filtered.length / PER_PAGE);
-  const paged = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
+  // Debounced search
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 400);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  // Load summary & filter options on mount
+  useEffect(() => {
+    loadSummaryAndFilters();
+  }, []);
+
+  // Load contacts when filters change
+  useEffect(() => {
+    loadContacts();
+  }, [selectedIndustry, debouncedSearch, page, countryFilter, regionFilter, typeFilter, sourceFilter, emailFilter, phoneFilter]);
+
+  const loadSummaryAndFilters = async () => {
+    const [summaryData, options] = await Promise.all([
+      fetchContactsSummary(),
+      fetchFilterOptions(),
+    ]);
+    if (summaryData) setSummary(summaryData);
+    if (options) setFilterOptions(options);
+  };
+
+  const loadContacts = async () => {
+    setLoading(true);
+    const result = await fetchContacts({
+      industry: selectedIndustry,
+      country: countryFilter,
+      region: regionFilter,
+      contactType: typeFilter,
+      source: sourceFilter,
+      emailFilter,
+      phoneFilter,
+      search: debouncedSearch,
+      page,
+      perPage: PER_PAGE,
+    });
+    setContacts(result.contacts);
+    setTotalFiltered(result.total);
+    setLoading(false);
+  };
+
+  const activeFilterCount = [selectedIndustry, countryFilter, regionFilter, typeFilter, sourceFilter, emailFilter, phoneFilter].filter(Boolean).length + (debouncedSearch ? 1 : 0);
+  const totalPages = Math.ceil(totalFiltered / PER_PAGE);
 
   const clearFilters = () => {
     setSelectedIndustry(''); setSearch(''); setCountryFilter(''); setRegionFilter('');
@@ -86,41 +121,96 @@ export default function ContactExplorer() {
     setPage(1);
   };
 
-  // Analytics from filtered data
-  const analytics = useMemo(() => {
-    const bySrc = {}, byCountry = {}, byType = {}, byRegion = {};
-    filtered.forEach(c => {
-      bySrc[c.source] = (bySrc[c.source] || 0) + 1;
-      byCountry[c.country] = (byCountry[c.country] || 0) + 1;
-      byType[c.contactType] = (byType[c.contactType] || 0) + 1;
-      byRegion[c.region] = (byRegion[c.region] || 0) + 1;
-    });
-    const sort = obj => Object.entries(obj).sort((a, b) => b[1] - a[1]);
-    return { bySrc: sort(bySrc), byCountry: sort(byCountry), byType: sort(byType), byRegion: sort(byRegion) };
-  }, [filtered]);
+  // Analytics from loaded summary
+  const industrySummary = summary?.industrySummary || [];
+  const totalContacts = summary?.total || 0;
+  const totalEmails = summary?.totalEmails || 0;
+  const totalPhones = summary?.totalPhones || 0;
+  const totalLinkedin = summary?.totalLinkedin || 0;
+  const totalExisting = summary?.totalExisting || 0;
 
-  const totalContacts = ALL_CONTACTS.length;
-  const totalEmails = ALL_CONTACTS.filter(c => c.email && c.email.includes('@')).length;
-  const totalPhones = ALL_CONTACTS.filter(c => c.phone && c.phone.length > 4).length;
-  const totalLinkedin = ALL_CONTACTS.filter(c => c.linkedin).length;
-  const totalExisting = ALL_CONTACTS.filter(c => c.contactType === 'Existing Customer').length;
-
-  const filteredEmails = filtered.filter(c => c.email && c.email.includes('@')).length;
-  const filteredPhones = filtered.filter(c => c.phone && c.phone.length > 4).length;
-
-  const donutData = INDUSTRY_SUMMARY.map(s => ({
+  const donutData = industrySummary.map(s => ({
     name: s.industry, value: s.count, color: INDUSTRY_COLORS[s.industry] || '#94A3B8',
   }));
 
-  const exportCSV = () => {
+  // Export CSV — gated by role
+  const handleExport = async () => {
+    if (!canExport) {
+      setShowExportModal(true);
+      return;
+    }
+
+    setExportLoading(true);
+    const result = await fetchContactsForExport({
+      industry: selectedIndustry,
+      country: countryFilter,
+      region: regionFilter,
+      contactType: typeFilter,
+      source: sourceFilter,
+      search: debouncedSearch,
+    }, user?.email);
+
+    if (result.error) {
+      alert('Export failed: ' + result.error);
+      setExportLoading(false);
+      return;
+    }
+
+    const watermark = `"Exported by: ${user?.email} | Date: ${new Date().toISOString().slice(0,10)} | Hans Infomatic Pvt. Ltd. — CONFIDENTIAL"`;
     const headers = ['Industry','Name','Company','Title','Email','Phone','Location','Country','Region','Product','Source','Contact Type','Status','Score','LinkedIn'];
-    const rows = filtered.map(c => [c.industry,c.name,c.company,c.title,c.email,c.phone,c.location,c.country,c.region,c.product,c.source,c.contactType,c.status,c.score,c.linkedin]);
-    const csv = [headers, ...rows].map(r => r.map(v => `"${(v||'').replace(/"/g,'""')}"`).join(',')).join('\n');
+    const rows = result.contacts.map(c => [c.industry,c.name,c.company,c.title,c.email,c.phone,c.location,c.country,c.region,c.product,c.source,c.contact_type,c.status,c.score,c.linkedin]);
+    const csv = [watermark, '', headers.join(','), ...rows.map(r => r.map(v => `"${(v||'').replace(/"/g,'""')}"`).join(','))].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = `Hans_Contacts_${new Date().toISOString().slice(0,10)}.csv`;
     a.click();
+    setExportLoading(false);
+  };
+
+  // Request export approval (non-admin)
+  const handleRequestExport = async () => {
+    setExportLoading(true);
+    const { error } = await supabase.from('export_requests').insert({
+      user_id: user?.id,
+      user_email: user?.email,
+      user_name: user?.name,
+      page: 'Contact Explorer',
+      record_count: totalFiltered,
+      filters: {
+        industry: selectedIndustry,
+        country: countryFilter,
+        region: regionFilter,
+        search: debouncedSearch,
+      },
+      status: 'pending',
+    });
+
+    if (!error) {
+      setExportRequestSent(true);
+      // Also log the request
+      await supabase.from('export_audit_log').insert({
+        user_email: user?.email,
+        action: 'request',
+        page: 'Contact Explorer',
+        record_count: totalFiltered,
+      });
+    }
+    setExportLoading(false);
+  };
+
+  // Mask email/phone for non-admin
+  const maskEmail = (email) => {
+    if (!email || !email.includes('@')) return email;
+    if (canExport) return email;
+    const [local, domain] = email.split('@');
+    return `${local.slice(0,2)}${'•'.repeat(Math.max(3, local.length - 2))}@${domain}`;
+  };
+
+  const maskPhone = (phone) => {
+    if (!phone || phone.length <= 4) return phone;
+    if (canExport) return phone;
+    return `${phone.slice(0,4)}${'•'.repeat(Math.max(4, phone.length - 4))}`;
   };
 
   const activeFilters = [];
@@ -141,8 +231,16 @@ export default function ContactExplorer() {
           <h2 className="page-title">Contact Explorer</h2>
           <p className="page-subtitle">{totalContacts.toLocaleString()} contacts from 14 data sources — structured by industry</p>
         </div>
-        <button className="btn btn-primary" onClick={exportCSV}>
-          <Download size={14} /> Export {filtered.length === totalContacts ? 'All' : filtered.length.toLocaleString()} Contacts
+        <button
+          className={`btn ${canExport ? 'btn-primary' : 'btn-secondary'}`}
+          onClick={handleExport}
+          disabled={exportLoading}
+        >
+          {canExport ? (
+            <><Download size={14} /> {exportLoading ? 'Exporting...' : `Export ${totalFiltered.toLocaleString()} Contacts`}</>
+          ) : (
+            <><Lock size={14} /> Export Restricted</>
+          )}
         </button>
       </div>
 
@@ -178,7 +276,7 @@ export default function ContactExplorer() {
             </PieChart>
           </ResponsiveContainer>
           <div style={{ fontSize: 10, color: 'var(--neutral-500)', lineHeight: 1.6 }}>
-            {INDUSTRY_SUMMARY.slice(0, 5).map(s => (
+            {industrySummary.slice(0, 5).map(s => (
               <div key={s.industry} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <span style={{ width: 6, height: 6, borderRadius: '50%', background: INDUSTRY_COLORS[s.industry], flexShrink: 0 }} />
                 <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.industry.length > 18 ? s.industry.slice(0,15)+'…' : s.industry}</span>
@@ -210,35 +308,35 @@ export default function ContactExplorer() {
             <label><Building2 size={10} /> Industry</label>
             <select value={selectedIndustry} onChange={e => { setSelectedIndustry(e.target.value); setPage(1); }}>
               <option value="">All Industries</option>
-              {INDUSTRY_SUMMARY.map(s => <option key={s.industry} value={s.industry}>{s.industry} ({s.count.toLocaleString()})</option>)}
+              {industrySummary.map(s => <option key={s.industry} value={s.industry}>{s.industry} ({s.count.toLocaleString()})</option>)}
             </select>
           </div>
           <div className="filter-group">
             <label><Tag size={10} /> Contact Type</label>
             <select value={typeFilter} onChange={e => { setTypeFilter(e.target.value); setPage(1); }}>
               <option value="">All Types</option>
-              {FILTER_CONTACT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+              {filterOptions.contactTypes.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
           </div>
           <div className="filter-group">
             <label><Globe size={10} /> Country</label>
             <select value={countryFilter} onChange={e => { setCountryFilter(e.target.value); setPage(1); }}>
               <option value="">All Countries</option>
-              {FILTER_COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
+              {filterOptions.countries.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
           <div className="filter-group">
             <label><Globe size={10} /> Region</label>
             <select value={regionFilter} onChange={e => { setRegionFilter(e.target.value); setPage(1); }}>
               <option value="">All Regions</option>
-              {FILTER_REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
+              {filterOptions.regions.map(r => <option key={r} value={r}>{r}</option>)}
             </select>
           </div>
           <div className="filter-group">
             <label><Users size={10} /> Source</label>
             <select value={sourceFilter} onChange={e => { setSourceFilter(e.target.value); setPage(1); }}>
               <option value="">All Sources</option>
-              {FILTER_SOURCES.map(s => <option key={s} value={s}>{s}</option>)}
+              {filterOptions.sources.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
           <div className="filter-group">
@@ -258,7 +356,6 @@ export default function ContactExplorer() {
             </select>
           </div>
         </div>
-        {/* Active filter pills */}
         {activeFilters.length > 0 && (
           <div className="active-filters">
             {activeFilters.map(f => (
@@ -267,36 +364,15 @@ export default function ContactExplorer() {
               </span>
             ))}
             <span style={{ fontSize: 12, color: 'var(--neutral-500)', padding: '3px 0', fontWeight: 500 }}>
-              → <strong style={{ color: 'var(--primary)' }}>{filtered.length.toLocaleString()}</strong> results
-              ({filteredEmails.toLocaleString()} emails, {filteredPhones.toLocaleString()} phones)
+              → <strong style={{ color: 'var(--primary)' }}>{totalFiltered.toLocaleString()}</strong> results
             </span>
           </div>
         )}
       </div>
 
-      {/* Analytics Row — shows breakdown of filtered data */}
-      <div className="analytics-row">
-        <div className="analytics-card">
-          <div className="analytics-card-title"><BarChart3 size={12} /> By Source</div>
-          <AnalyticsBar items={analytics.bySrc} maxVal={analytics.bySrc[0]?.[1] || 1} color="#10B981" />
-        </div>
-        <div className="analytics-card">
-          <div className="analytics-card-title"><Tag size={12} /> By Contact Type</div>
-          <AnalyticsBar items={analytics.byType} maxVal={analytics.byType[0]?.[1] || 1} color="#6366F1" />
-        </div>
-        <div className="analytics-card">
-          <div className="analytics-card-title"><Globe size={12} /> By Country</div>
-          <AnalyticsBar items={analytics.byCountry} maxVal={analytics.byCountry[0]?.[1] || 1} color="#0EA5E9" />
-        </div>
-        <div className="analytics-card">
-          <div className="analytics-card-title"><Globe size={12} /> By Region</div>
-          <AnalyticsBar items={analytics.byRegion} maxVal={analytics.byRegion[0]?.[1] || 1} color="#F97316" />
-        </div>
-      </div>
-
       {/* Industry Cards */}
       <div className="industry-grid">
-        {INDUSTRY_SUMMARY.map(ind => {
+        {industrySummary.map(ind => {
           const color = INDUSTRY_COLORS[ind.industry] || '#94A3B8';
           const icon = INDUSTRY_ICONS[ind.industry] || '📁';
           const product = INDUSTRY_PRODUCTS[ind.industry] || '';
@@ -330,10 +406,13 @@ export default function ContactExplorer() {
       <div className="contact-table-wrap">
         <div className="contact-table-header">
           <h3>{selectedIndustry ? `${INDUSTRY_ICONS[selectedIndustry] || ''} ${selectedIndustry}` : 'All Contacts'}</h3>
-          <span style={{ fontSize: 11, color: 'var(--neutral-400)' }}>{filtered.length.toLocaleString()} records</span>
+          <span style={{ fontSize: 11, color: 'var(--neutral-400)' }}>
+            {loading ? 'Loading...' : `${totalFiltered.toLocaleString()} records`}
+            {!canExport && <span style={{ marginLeft: 8, color: '#F59E0B', fontSize: 10 }}>🔒 Email/Phone masked</span>}
+          </span>
         </div>
         <div className="contact-table-scroll">
-          <table className="contact-table">
+          <table className="contact-table" style={!canExport ? { userSelect: 'none' } : {}}>
             <thead>
               <tr>
                 <th>Industry</th>
@@ -350,31 +429,35 @@ export default function ContactExplorer() {
               </tr>
             </thead>
             <tbody>
-              {paged.map((c, i) => {
+              {loading ? (
+                <tr><td colSpan={11} style={{ textAlign: 'center', padding: 40, color: '#94A3B8' }}>
+                  <div className="loading-spinner" /> Loading contacts from database...
+                </td></tr>
+              ) : contacts.map((c, i) => {
                 const color = INDUSTRY_COLORS[c.industry] || '#94A3B8';
                 return (
-                  <tr key={i}>
+                  <tr key={c.id || i}>
                     <td>
                       <span className="industry-badge" style={{ background: `${color}15`, color }}>
-                        {INDUSTRY_ICONS[c.industry]} {c.industry.length > 14 ? c.industry.slice(0,12)+'…' : c.industry}
+                        {INDUSTRY_ICONS[c.industry]} {c.industry?.length > 14 ? c.industry.slice(0,12)+'…' : c.industry}
                       </span>
                     </td>
                     <td className="contact-name">{c.name || '—'}</td>
                     <td className="contact-company">{c.company || '—'}</td>
                     <td style={{ fontSize: 11, color: '#64748B', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.title || '—'}</td>
-                    <td>{c.email && c.email.includes('@') ? <span className="contact-email">{c.email}</span> : <span style={{ color: '#CBD5E1' }}>—</span>}</td>
-                    <td>{c.phone && c.phone.length > 4 ? <span className="contact-phone">{c.phone}</span> : <span style={{ color: '#CBD5E1' }}>—</span>}</td>
+                    <td>{c.email && c.email.includes('@') ? <span className="contact-email">{maskEmail(c.email)}</span> : <span style={{ color: '#CBD5E1' }}>—</span>}</td>
+                    <td>{c.phone && c.phone.length > 4 ? <span className="contact-phone">{maskPhone(c.phone)}</span> : <span style={{ color: '#CBD5E1' }}>—</span>}</td>
                     <td style={{ fontSize: 11, color: '#64748B', whiteSpace: 'nowrap' }}>{c.country !== 'Unknown' ? c.country : <span style={{color:'#CBD5E1'}}>—</span>}</td>
                     <td style={{ fontSize: 10, color: '#64748B' }}>{c.product || '—'}</td>
                     <td style={{ fontSize: 10, color: '#94A3B8' }}>{c.source || '—'}</td>
-                    <td><span className={`type-badge ${getTypeBadgeClass(c.contactType)}`}>{c.contactType}</span></td>
+                    <td><span className={`type-badge ${getTypeBadgeClass(c.contact_type)}`}>{c.contact_type}</span></td>
                     <td>
                       {c.linkedin ? <a className="contact-linkedin" href={c.linkedin} target="_blank" rel="noopener noreferrer">🔗 View</a> : <span style={{ color: '#CBD5E1' }}>—</span>}
                     </td>
                   </tr>
                 );
               })}
-              {paged.length === 0 && (
+              {!loading && contacts.length === 0 && (
                 <tr><td colSpan={11} style={{ textAlign: 'center', padding: 40, color: '#94A3B8' }}>No contacts match your filters</td></tr>
               )}
             </tbody>
@@ -385,7 +468,7 @@ export default function ContactExplorer() {
         {totalPages > 0 && (
           <div className="explorer-pagination">
             <span className="explorer-pagination-info">
-              {filtered.length > 0 ? `${((page-1)*PER_PAGE)+1}–${Math.min(page*PER_PAGE, filtered.length)}` : '0'} of {filtered.length.toLocaleString()}
+              {totalFiltered > 0 ? `${((page-1)*PER_PAGE)+1}–${Math.min(page*PER_PAGE, totalFiltered)}` : '0'} of {totalFiltered.toLocaleString()}
             </span>
             <div className="explorer-pagination-buttons">
               <button className="page-btn" disabled={page===1} onClick={() => setPage(1)}>«</button>
@@ -404,6 +487,58 @@ export default function ContactExplorer() {
           </div>
         )}
       </div>
+
+      {/* Export Gate Modal */}
+      {showExportModal && (
+        <div className="pw-modal-overlay" onClick={() => { setShowExportModal(false); setExportRequestSent(false); }}>
+          <div className="pw-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 440 }}>
+            <div className="pw-modal-header">
+              <div className="pw-modal-icon" style={{ background: '#FEF3C7' }}>
+                <ShieldAlert size={20} color="#F59E0B" />
+              </div>
+              <div>
+                <h3>Export Restricted</h3>
+                <p>Contact data exports require admin approval</p>
+              </div>
+              <button className="pw-modal-close" onClick={() => { setShowExportModal(false); setExportRequestSent(false); }}>×</button>
+            </div>
+            <div className="pw-modal-body" style={{ padding: '20px 24px' }}>
+              {exportRequestSent ? (
+                <div style={{ textAlign: 'center', padding: 20 }}>
+                  <CheckCircle size={48} color="#10B981" style={{ marginBottom: 12 }} />
+                  <h4 style={{ color: '#10B981', marginBottom: 8 }}>Request Submitted!</h4>
+                  <p style={{ color: '#64748B', fontSize: 13 }}>
+                    Your export request for {totalFiltered.toLocaleString()} contacts has been sent to the admin for approval.
+                    You'll be notified when it's approved.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div style={{ background: '#FEF3C7', borderRadius: 8, padding: '12px 16px', marginBottom: 16, fontSize: 13, color: '#92400E' }}>
+                    <strong>Why is export restricted?</strong><br/>
+                    Contact data is sensitive business intelligence. Exports are limited to Admin and Sales Manager roles to protect data privacy.
+                  </div>
+                  <div style={{ background: '#F1F5F9', borderRadius: 8, padding: '12px 16px', marginBottom: 16, fontSize: 12, color: '#475569' }}>
+                    <div><strong>Your role:</strong> {user?.role}</div>
+                    <div><strong>Records requested:</strong> {totalFiltered.toLocaleString()}</div>
+                    <div><strong>Filters:</strong> {activeFilters.length > 0 ? activeFilters.map(f => f.label).join(', ') : 'None'}</div>
+                  </div>
+                </>
+              )}
+            </div>
+            <div className="pw-modal-footer">
+              <button className="pw-btn-cancel" onClick={() => { setShowExportModal(false); setExportRequestSent(false); }}>
+                {exportRequestSent ? 'Close' : 'Cancel'}
+              </button>
+              {!exportRequestSent && (
+                <button className="pw-btn-save" onClick={handleRequestExport} disabled={exportLoading}>
+                  {exportLoading ? <span className="pw-spinner" /> : '📋 Request Export Approval'}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Database, Mail, MessageCircle, CalendarDays, Search, Link, ArrowRight, Shield, Plus, Edit2, Trash2, X, ChevronUp, ChevronDown, Power, Save, GripVertical, Copy } from 'lucide-react';
+import { Database, Mail, MessageCircle, CalendarDays, Search, Link, ArrowRight, Shield, Plus, Edit2, Trash2, X, ChevronUp, ChevronDown, Power, Save, GripVertical, Copy, Key, Eye, EyeOff, RotateCcw } from 'lucide-react';
 import { SCORING_CRITERIA, SCORE_THRESHOLDS, ROUTING_RULES, INTEGRATIONS, AUDIT_LOG } from '../data/scoringRules';
 import USERS from '../data/users';
+import { useAuth } from '../auth/AuthContext';
 import './Admin.css';
 
 const TABS = ['Scoring Rules', 'Routing Rules', 'Integrations', 'Users', 'Audit Log'];
@@ -20,6 +21,7 @@ const TEAM_MEMBERS = [
 ];
 
 export default function Admin() {
+  const { addUser: authAddUser, resetUserPassword } = useAuth();
   const [tab, setTab] = useState('Scoring Rules');
   const [criteria, setCriteria] = useState(SCORING_CRITERIA);
   const [thresholds, setThresholds] = useState(SCORE_THRESHOLDS);
@@ -31,6 +33,8 @@ export default function Admin() {
   const [users, setUsers] = useState(USERS.map(u => ({ ...u })));
   const [editingUser, setEditingUser] = useState(null);
   const [showUserEditor, setShowUserEditor] = useState(false);
+  const [showPasswordField, setShowPasswordField] = useState(false);
+  const [resetPwMsg, setResetPwMsg] = useState(null);
 
   const handleWeightChange = (id, value) => {
     setCriteria(prev => prev.map(c => c.id === id ? { ...c, currentWeight: parseInt(value) } : c));
@@ -349,12 +353,18 @@ export default function Admin() {
             <button className="btn btn-primary btn-sm" onClick={() => {
               setEditingUser({
                 id: `U${String(Date.now()).slice(-3)}`,
-                name: '', email: '', role: 'Sales Rep', region: 'India',
+                name: '', email: '', password: '', role: 'Sales Rep', region: 'India',
                 avatar: '#10B981', initials: '', leadsAssigned: 0, qualified: 0, conversionRate: 0,
               });
+              setShowPasswordField(true);
               setShowUserEditor(true);
             }}><Plus size={14} /> Add User</button>
           </div>
+          {resetPwMsg && (
+            <div className={`pw-admin-toast ${resetPwMsg.type}`}>
+              {resetPwMsg.type === 'success' ? '✓' : '✗'} {resetPwMsg.text}
+            </div>
+          )}
           <table className="inbox-table">
             <thead>
               <tr><th>User</th><th>Email</th><th>Role</th><th>Region</th><th>Leads</th><th>Qualified</th><th>Conv. %</th><th>Actions</th></tr>
@@ -378,8 +388,20 @@ export default function Admin() {
                     <div className="user-actions">
                       <button className="btn btn-ghost btn-xs" onClick={() => {
                         setEditingUser({ ...u });
+                        setShowPasswordField(false);
                         setShowUserEditor(true);
                       }} title="Edit"><Edit2 size={12} /></button>
+                      <button className="btn btn-ghost btn-xs" onClick={() => {
+                        const newPw = prompt(`Reset password for ${u.name}?\nEnter new password:`);
+                        if (newPw && newPw.length >= 6) {
+                          resetUserPassword(u.email, newPw);
+                          setResetPwMsg({ type: 'success', text: `Password reset for ${u.name}` });
+                          setTimeout(() => setResetPwMsg(null), 3000);
+                        } else if (newPw) {
+                          setResetPwMsg({ type: 'error', text: 'Password must be at least 6 characters' });
+                          setTimeout(() => setResetPwMsg(null), 3000);
+                        }
+                      }} title="Reset Password" style={{ color: '#F59E0B' }}><Key size={12} /></button>
                       <button className="btn btn-ghost btn-xs rule-delete" onClick={() => {
                         if (window.confirm(`Delete user ${u.name}? This cannot be undone.`)) {
                           setUsers(prev => prev.filter(x => x.id !== u.id));
@@ -436,6 +458,23 @@ export default function Admin() {
                     placeholder="e.g., rohit@hansinfomatic.com" />
                 </div>
               </div>
+              {/* Password field — shown for new users or when editing */}
+              <div className="editor-row" style={{ gridColumn: '1 / -1' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Key size={12} /> Password
+                  {!showPasswordField && (
+                    <button type="button" className="btn btn-ghost btn-xs" style={{ fontSize: 11, color: '#F59E0B' }}
+                      onClick={() => setShowPasswordField(true)}>Change</button>
+                  )}
+                </label>
+                {showPasswordField ? (
+                  <input className="input" type="text" value={editingUser.password || ''}
+                    onChange={e => setEditingUser(prev => ({ ...prev, password: e.target.value }))}
+                    placeholder="Min 6 characters" />
+                ) : (
+                  <div style={{ fontSize: 12, color: '#94A3B8', padding: '8px 0' }}>••••••••  (click Change to set new password)</div>
+                )}
+              </div>
               <div className="editor-grid-2">
                 <div className="editor-row">
                   <label>Role</label>
@@ -484,6 +523,25 @@ export default function Admin() {
               <button className="btn btn-primary" onClick={() => {
                 if (!editingUser.name.trim()) { alert('Name is required'); return; }
                 if (!editingUser.email.trim()) { alert('Email is required'); return; }
+                // For new users, password is required
+                const isNew = !users.find(u => u.id === editingUser.id);
+                if (isNew && (!editingUser.password || editingUser.password.length < 6)) {
+                  alert('Password is required (min 6 characters) for new users');
+                  return;
+                }
+                // Sync with auth context
+                authAddUser({
+                  email: editingUser.email,
+                  password: editingUser.password || undefined,
+                  name: editingUser.name,
+                  role: editingUser.role,
+                  initials: editingUser.initials,
+                  avatar: editingUser.avatar,
+                });
+                // If password was changed for existing user, sync it
+                if (!isNew && showPasswordField && editingUser.password && editingUser.password.length >= 6) {
+                  resetUserPassword(editingUser.email, editingUser.password);
+                }
                 setUsers(prev => {
                   const exists = prev.find(u => u.id === editingUser.id);
                   if (exists) return prev.map(u => u.id === editingUser.id ? editingUser : u);
@@ -491,6 +549,7 @@ export default function Admin() {
                 });
                 setShowUserEditor(false);
                 setEditingUser(null);
+                setShowPasswordField(false);
               }}><Save size={14} /> Save User</button>
             </div>
           </div>
