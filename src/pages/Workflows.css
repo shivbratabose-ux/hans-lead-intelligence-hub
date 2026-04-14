@@ -1,0 +1,63 @@
+/* Enrichment Workflows */
+.workflows-page { animation: fadeIn 0.4s ease; }
+.wf-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-5); margin-bottom: var(--space-6); }
+.wf-card { background: var(--surface-card); border: var(--border); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-xs); transition: all var(--transition-base); cursor: pointer; }
+.wf-card:hover { box-shadow: var(--shadow-lg); transform: translateY(-3px); }
+.wf-card-body { padding: var(--space-5); }
+.wf-card-header { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-3); }
+.wf-card-icon { width: 44px; height: 44px; border-radius: var(--radius-md); background: var(--primary-ghost); display: flex; align-items: center; justify-content: center; font-size: 22px; }
+.wf-card-title { font-family: var(--font-heading); font-size: var(--text-md); font-weight: 700; color: var(--tertiary-dark); }
+.wf-card-cat { font-size: 11px; color: var(--neutral-400); }
+.wf-card-desc { font-size: var(--text-sm); color: var(--neutral-500); line-height: 1.6; margin-bottom: var(--space-4); }
+
+/* Pipeline Visualization */
+.wf-pipeline { display: flex; align-items: center; gap: 0; padding: var(--space-3) 0; overflow-x: auto; margin-bottom: var(--space-4); }
+.wf-node { display: flex; flex-direction: column; align-items: center; gap: 4px; flex-shrink: 0; position: relative; }
+.wf-node-box { width: 72px; height: 56px; border-radius: var(--radius-md); border: 2px solid var(--border-color); display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 16px; background: var(--surface-card); transition: all var(--transition-base); }
+.wf-node-box.running { border-color: #3B82F6; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15); animation: pulse 1.5s infinite; }
+.wf-node-box.success { border-color: var(--primary); background: rgba(16, 185, 129, 0.05); }
+.wf-node-box.fail { border-color: var(--danger); background: rgba(239, 68, 68, 0.05); }
+.wf-node-label { font-size: 9px; color: var(--neutral-500); text-align: center; max-width: 80px; line-height: 1.2; }
+.wf-node-result { font-size: 8px; color: var(--primary); font-weight: 600; }
+.wf-connector { width: 28px; height: 2px; background: var(--neutral-200); flex-shrink: 0; position: relative; }
+.wf-connector::after { content: '→'; position: absolute; right: -4px; top: -8px; font-size: 12px; color: var(--neutral-300); }
+.wf-connector.active { background: var(--primary); }
+.wf-connector.active::after { color: var(--primary); }
+
+/* Workflow Stats */
+.wf-card-stats { display: flex; gap: var(--space-5); padding-top: var(--space-3); border-top: var(--border); }
+.wf-stat { font-size: 12px; color: var(--neutral-500); }
+.wf-stat strong { color: var(--tertiary-dark); font-weight: 700; }
+
+/* Execution Panel */
+.wf-execution { background: var(--surface-card); border: var(--border); border-radius: var(--radius-lg); padding: var(--space-6); margin-bottom: var(--space-6); box-shadow: var(--shadow-sm); }
+.wf-exec-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-5); }
+.wf-exec-title { font-family: var(--font-heading); font-size: var(--text-xl); font-weight: 800; }
+.wf-exec-pipeline { display: flex; align-items: center; justify-content: center; gap: 0; padding: var(--space-6) 0; }
+.wf-exec-node { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.wf-exec-node-box { width: 100px; height: 80px; border-radius: var(--radius-lg); border: 2px solid var(--border-color); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; background: var(--surface-card); transition: all 0.5s ease; }
+.wf-exec-node-box .node-emoji { font-size: 24px; }
+.wf-exec-node-box .node-name { font-size: 10px; font-weight: 600; color: var(--tertiary-dark); text-align: center; }
+.wf-exec-node-box.active { border-color: #3B82F6; box-shadow: 0 0 0 6px rgba(59, 130, 246, 0.12); }
+.wf-exec-node-box.done { border-color: var(--primary); background: rgba(16, 185, 129, 0.05); }
+.wf-exec-node-status { font-size: 10px; font-weight: 600; }
+.wf-exec-connector { width: 40px; height: 3px; background: var(--neutral-200); flex-shrink: 0; margin-bottom: 20px; }
+.wf-exec-connector.done { background: var(--primary); }
+
+/* Node palette */
+.node-palette { display: flex; flex-wrap: wrap; gap: var(--space-3); margin-bottom: var(--space-5); }
+.node-palette-item { display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: var(--radius-md); border: 1.5px solid var(--border-color); background: var(--surface-card); font-size: 12px; font-weight: 500; color: var(--neutral-600); cursor: grab; transition: all var(--transition-fast); }
+.node-palette-item:hover { border-color: var(--primary); color: var(--primary); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+.node-palette-item .node-emoji { font-size: 16px; }
+
+/* Waterfall visualization */
+.waterfall-flow { background: var(--neutral-50); border-radius: var(--radius-lg); padding: var(--space-5); margin: var(--space-5) 0; }
+.waterfall-step { display: flex; align-items: center; gap: var(--space-4); padding: var(--space-3) 0; }
+.waterfall-arrow { width: 24px; display: flex; align-items: center; justify-content: center; color: var(--neutral-300); font-size: 16px; }
+.waterfall-box { flex: 1; display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); border-radius: var(--radius-md); border: 1.5px solid var(--border-color); background: var(--surface-card); }
+.waterfall-box.active { border-color: var(--primary); background: rgba(16, 185, 129, 0.03); }
+.waterfall-box .step-icon { font-size: 20px; }
+.waterfall-box .step-info { flex: 1; }
+.waterfall-box .step-name { font-weight: 600; font-size: var(--text-sm); color: var(--tertiary-dark); }
+.waterfall-box .step-desc { font-size: 11px; color: var(--neutral-400); }
+.waterfall-box .step-result { font-size: 12px; font-weight: 600; }

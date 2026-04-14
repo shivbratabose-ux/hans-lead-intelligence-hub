@@ -1,0 +1,95 @@
+/* Events */
+.events-page { animation: fadeIn 0.4s ease; }
+.events-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-5);
+  margin-bottom: var(--space-6);
+}
+.event-card {
+  background: var(--surface-card);
+  border: var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-xs);
+  transition: all var(--transition-base);
+  cursor: pointer;
+}
+.event-card:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-3px);
+}
+.event-card-banner {
+  height: 8px;
+  background: linear-gradient(90deg, var(--primary), var(--secondary));
+}
+.event-card-banner.completed { background: linear-gradient(90deg, #94A3B8, #CBD5E1); }
+.event-card-banner.upcoming { background: linear-gradient(90deg, var(--warning), #F97316); }
+.event-card-body { padding: var(--space-5); }
+.event-card-status {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: var(--space-2);
+}
+.event-card-name {
+  font-family: var(--font-heading);
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--tertiary-dark);
+  margin-bottom: var(--space-2);
+}
+.event-card-detail {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--neutral-500);
+  margin-bottom: var(--space-1);
+}
+.event-card-detail svg { width: 14px; height: 14px; flex-shrink: 0; }
+.event-card-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: var(--border);
+}
+.event-stat { text-align: center; }
+.event-stat-value {
+  font-family: var(--font-heading);
+  font-size: var(--text-xl);
+  font-weight: 800;
+  color: var(--tertiary-dark);
+}
+.event-stat-label { font-size: 11px; color: var(--neutral-400); }
+.event-detail-modal {
+  background: var(--surface-card);
+  border: var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: var(--space-6);
+}
+.event-detail-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: var(--space-5);
+}
+.event-detail-qr {
+  width: 120px;
+  height: 120px;
+  background: var(--neutral-100);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: var(--neutral-500);
+  border: var(--border);
+}
+.event-detail-qr svg { width: 48px; height: 48px; color: var(--tertiary); margin-bottom: 4px; }
