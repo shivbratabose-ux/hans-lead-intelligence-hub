@@ -1,10 +1,12 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   Sparkles, Search, Mail, Phone, AlertTriangle, CheckCircle, XCircle, Loader2,
   Settings, Play, Pause, RefreshCw, Download, ChevronDown, ChevronUp,
-  Zap, Globe, Building2, Shield, Key
+  Zap, Globe, Building2, Shield, Key, Edit3, Save, X, Pencil, Check, UserPlus
 } from 'lucide-react';
-import { ALL_CONTACTS, INDUSTRY_SUMMARY, INDUSTRY_COLORS, INDUSTRY_ICONS } from '../data/realContacts';
+import { INDUSTRY_COLORS, INDUSTRY_ICONS, INDUSTRY_SUMMARY } from '../data/realContacts';
+import { supabase } from '../lib/supabase';
+import { useAuth } from '../auth/AuthContext';
 import './EnrichmentEngine.css';
 
 // ========== API INTEGRATION LAYER ==========
@@ -26,14 +28,6 @@ async function callGemini(apiKey, prompt) {
   return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
 }
 
-async function findEmailWithHunter(apiKey, domain, firstName, lastName) {
-  const res = await fetch(
-    `https://api.hunter.io/v2/email-finder?domain=${domain}&first_name=${firstName}&last_name=${lastName}&api_key=${apiKey}`
-  );
-  const data = await res.json();
-  return data.data || null;
-}
-
 async function verifyEmailWithHunter(apiKey, email) {
   const res = await fetch(
     `https://api.hunter.io/v2/email-verifier?email=${email}&api_key=${apiKey}`
@@ -42,17 +36,11 @@ async function verifyEmailWithHunter(apiKey, email) {
   return data.data || null;
 }
 
-async function domainSearchHunter(apiKey, domain) {
-  const res = await fetch(
-    `https://api.hunter.io/v2/domain-search?domain=${domain}&api_key=${apiKey}`
-  );
-  const data = await res.json();
-  return data.data || null;
-}
-
 // ========== COMPONENT ==========
 
 export default function EnrichmentEngine() {
+  const { user } = useAuth();
+
   // API Keys
   const [geminiKey, setGeminiKey] = useState(localStorage.getItem('gemini_api_key') || '');
   const [hunterKey, setHunterKey] = useState(localStorage.getItem('hunter_api_key') || '');
@@ -63,12 +51,28 @@ export default function EnrichmentEngine() {
   const [missingField, setMissingField] = useState('email');
   const [page, setPage] = useState(1);
 
+  // Data from Supabase
+  const [contacts, setContacts] = useState([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({ noEmail: 0, noPhone: 0, noBoth: 0, hasCompany: 0, manualUpdates: 0, byInd: {} });
+
   // Enrichment state
   const [enriching, setEnriching] = useState(false);
   const [enrichedResults, setEnrichedResults] = useState({});
   const [progress, setProgress] = useState({ current: 0, total: 0 });
   const [logs, setLogs] = useState([]);
   const [showLogs, setShowLogs] = useState(false);
+
+  // Manual edit state
+  const [editingCell, setEditingCell] = useState(null); // { id, field }
+  const [editValue, setEditValue] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [editModal, setEditModal] = useState(null); // full contact edit modal
+  const [editForm, setEditForm] = useState({});
+  const [recentUpdates, setRecentUpdates] = useState([]);
+
+  const PER_PAGE = 20;
 
   // Save API keys
   const saveKeys = () => {
@@ -82,52 +86,211 @@ export default function EnrichmentEngine() {
     setLogs(prev => [{ type, msg, time: new Date().toLocaleTimeString() }, ...prev].slice(0, 200));
   }, []);
 
-  // Missing data analysis
-  const stats = useMemo(() => {
-    const noEmail = ALL_CONTACTS.filter(c => !c.email || !c.email.includes('@'));
-    const noPhone = ALL_CONTACTS.filter(c => !c.phone || c.phone.length <= 4);
-    const noBoth = ALL_CONTACTS.filter(c => (!c.email || !c.email.includes('@')) && (!c.phone || c.phone.length <= 4));
-    const hasCompany = noEmail.filter(c => c.company && c.company.trim().length > 2);
+  // ========== SUPABASE DATA LOADING ==========
 
-    // By industry
-    const byInd = {};
-    ALL_CONTACTS.forEach(c => {
-      if (!byInd[c.industry]) byInd[c.industry] = { total: 0, noEmail: 0, noPhone: 0 };
-      byInd[c.industry].total++;
-      if (!c.email || !c.email.includes('@')) byInd[c.industry].noEmail++;
-      if (!c.phone || c.phone.length <= 4) byInd[c.industry].noPhone++;
-    });
-
-    return { noEmail: noEmail.length, noPhone: noPhone.length, noBoth: noBoth.length, hasCompany: hasCompany.length, byInd };
+  // Load stats
+  useEffect(() => {
+    loadStats();
   }, []);
 
-  // Contacts missing data
-  const candidates = useMemo(() => {
-    let list = ALL_CONTACTS;
-    if (industry) list = list.filter(c => c.industry === industry);
-    if (missingField === 'email') list = list.filter(c => !c.email || !c.email.includes('@'));
-    else if (missingField === 'phone') list = list.filter(c => !c.phone || c.phone.length <= 4);
-    else list = list.filter(c => (!c.email || !c.email.includes('@')) && (!c.phone || c.phone.length <= 4));
-    // Prioritize contacts with company names
-    return list.sort((a, b) => (b.company?.length || 0) - (a.company?.length || 0));
-  }, [industry, missingField]);
+  // Load contacts when filters change
+  useEffect(() => {
+    loadContacts();
+  }, [industry, missingField, page]);
 
-  const PER_PAGE = 20;
-  const totalPages = Math.ceil(candidates.length / PER_PAGE);
-  const paged = candidates.slice((page - 1) * PER_PAGE, page * PER_PAGE);
+  const loadStats = async () => {
+    // Get missing data counts using batched queries
+    let allData = [];
+    let from = 0;
+    const batchSize = 1000;
+    let hasMore = true;
+
+    while (hasMore) {
+      const { data } = await supabase
+        .from('contacts')
+        .select('industry, email, phone, company')
+        .range(from, from + batchSize - 1);
+
+      if (data && data.length > 0) {
+        allData = allData.concat(data);
+        from += batchSize;
+        hasMore = data.length === batchSize;
+      } else {
+        hasMore = false;
+      }
+    }
+
+    const byInd = {};
+    let noEmail = 0, noPhone = 0, noBoth = 0, hasCompany = 0;
+
+    allData.forEach(c => {
+      const missingEmail = !c.email || !c.email.includes('@');
+      const missingPhone = !c.phone || c.phone.length <= 4;
+
+      if (!byInd[c.industry]) byInd[c.industry] = { total: 0, noEmail: 0, noPhone: 0 };
+      byInd[c.industry].total++;
+
+      if (missingEmail) { noEmail++; byInd[c.industry].noEmail++; }
+      if (missingPhone) { noPhone++; byInd[c.industry].noPhone++; }
+      if (missingEmail && missingPhone) noBoth++;
+      if (missingEmail && c.company && c.company.trim().length > 2) hasCompany++;
+    });
+
+    setStats({ noEmail, noPhone, noBoth, hasCompany, manualUpdates: recentUpdates.length, byInd });
+  };
+
+  const loadContacts = async () => {
+    setLoading(true);
+
+    let query = supabase
+      .from('contacts')
+      .select('*', { count: 'exact' });
+
+    if (industry) query = query.eq('industry', industry);
+
+    // Filter by missing data
+    if (missingField === 'email') {
+      query = query.or('email.is.null,email.not.ilike.%@%');
+    } else if (missingField === 'phone') {
+      query = query.or('phone.is.null,phone.eq.,phone.lte.1234');
+    } else {
+      // Missing both
+      query = query.or('email.is.null,email.not.ilike.%@%').or('phone.is.null,phone.eq.,phone.lte.1234');
+    }
+
+    const from = (page - 1) * PER_PAGE;
+    query = query.range(from, from + PER_PAGE - 1).order('company', { ascending: true });
+
+    const { data, count, error } = await query;
+
+    if (error) {
+      console.error('Error loading contacts:', error);
+      addLog('error', `Failed to load contacts: ${error.message}`);
+    }
+
+    setContacts(data || []);
+    setTotalCount(count || 0);
+    setLoading(false);
+  };
+
+  const totalPages = Math.ceil(totalCount / PER_PAGE);
+
+  // ========== MANUAL INLINE EDITING ==========
+
+  const startEdit = (contactId, field, currentValue) => {
+    setEditingCell({ id: contactId, field });
+    setEditValue(currentValue || '');
+  };
+
+  const cancelEdit = () => {
+    setEditingCell(null);
+    setEditValue('');
+  };
+
+  const saveEdit = async () => {
+    if (!editingCell) return;
+    setSaving(true);
+
+    const { id, field } = editingCell;
+    const updates = { [field]: editValue.trim() || null };
+
+    const { error } = await supabase
+      .from('contacts')
+      .update(updates)
+      .eq('id', id);
+
+    if (error) {
+      addLog('error', `Failed to save ${field}: ${error.message}`);
+    } else {
+      // Update local state
+      setContacts(prev => prev.map(c =>
+        c.id === id ? { ...c, ...updates } : c
+      ));
+      setRecentUpdates(prev => [
+        { id, field, value: editValue.trim(), time: new Date().toLocaleTimeString(), user: user?.email },
+        ...prev
+      ].slice(0, 50));
+      addLog('success', `Updated ${field} for contact ${id.slice(0,8)}...`);
+    }
+
+    setSaving(false);
+    setEditingCell(null);
+    setEditValue('');
+  };
+
+  const handleEditKeyDown = (e) => {
+    if (e.key === 'Enter') saveEdit();
+    if (e.key === 'Escape') cancelEdit();
+  };
+
+  // ========== FULL CONTACT EDIT MODAL ==========
+
+  const openEditModal = (contact) => {
+    setEditModal(contact);
+    setEditForm({
+      name: contact.name || '',
+      email: contact.email || '',
+      phone: contact.phone || '',
+      title: contact.title || '',
+      linkedin: contact.linkedin || '',
+      location: contact.location || '',
+      status: contact.status || '',
+      score: contact.score || '',
+    });
+  };
+
+  const saveEditModal = async () => {
+    if (!editModal) return;
+    setSaving(true);
+
+    const updates = {};
+    Object.entries(editForm).forEach(([key, val]) => {
+      if (val !== (editModal[key] || '')) {
+        updates[key] = val.trim() || null;
+      }
+    });
+
+    if (Object.keys(updates).length === 0) {
+      setSaving(false);
+      setEditModal(null);
+      return;
+    }
+
+    const { error } = await supabase
+      .from('contacts')
+      .update(updates)
+      .eq('id', editModal.id);
+
+    if (error) {
+      addLog('error', `Failed to update contact: ${error.message}`);
+    } else {
+      setContacts(prev => prev.map(c =>
+        c.id === editModal.id ? { ...c, ...updates } : c
+      ));
+      const changedFields = Object.keys(updates).join(', ');
+      setRecentUpdates(prev => [
+        { id: editModal.id, field: changedFields, value: 'multiple fields', time: new Date().toLocaleTimeString(), user: user?.email },
+        ...prev
+      ].slice(0, 50));
+      addLog('success', `Updated ${changedFields} for ${editModal.name || editModal.company}`);
+    }
+
+    setSaving(false);
+    setEditModal(null);
+  };
 
   // ========== AI ENRICHMENT ==========
-  const runEnrichment = async (contacts) => {
+  const runEnrichment = async (contactList) => {
     if (!geminiKey) { addLog('error', 'Gemini API key is required'); setShowSettings(true); return; }
 
     setEnriching(true);
-    const total = contacts.length;
+    const total = contactList.length;
     setProgress({ current: 0, total });
     addLog('info', `Starting AI enrichment for ${total} contacts...`);
 
     const batchSize = 5;
-    for (let i = 0; i < contacts.length; i += batchSize) {
-      const batch = contacts.slice(i, i + batchSize);
+    for (let i = 0; i < contactList.length; i += batchSize) {
+      const batch = contactList.slice(i, i + batchSize);
       const batchInfo = batch.map(c => `- Name: "${c.name}", Company: "${c.company}", Title: "${c.title}", Industry: "${c.industry}", Location: "${c.location}"`).join('\n');
 
       const prompt = `You are a B2B contact data enrichment assistant for the logistics and air cargo industry.
@@ -150,22 +313,16 @@ JSON only, no other text.`;
 
       try {
         const response = await callGemini(geminiKey, prompt);
-        // Parse JSON from response
         const jsonMatch = response.match(/\[[\s\S]*\]/);
         if (jsonMatch) {
           const results = JSON.parse(jsonMatch[0]);
           results.forEach((r, idx) => {
             const contact = batch[idx];
             if (contact) {
-              const key = `${contact.company}__${contact.name}`;
+              const key = contact.id;
               setEnrichedResults(prev => ({
                 ...prev,
-                [key]: {
-                  ...r,
-                  original: contact,
-                  verified: false,
-                  accepted: false,
-                }
+                [key]: { ...r, original: contact, verified: false, accepted: false }
               }));
             }
           });
@@ -176,15 +333,40 @@ JSON only, no other text.`;
       }
 
       setProgress({ current: Math.min(i + batchSize, total), total });
-
-      // Rate limiting: wait 2s between batches (free tier: 15 RPM)
-      if (i + batchSize < contacts.length) {
+      if (i + batchSize < contactList.length) {
         await new Promise(r => setTimeout(r, 2000));
       }
     }
 
     setEnriching(false);
-    addLog('success', `Enrichment complete! ${Object.keys(enrichedResults).length} contacts processed.`);
+    addLog('success', `Enrichment complete! Processed ${total} contacts.`);
+  };
+
+  // Accept AI suggestion — save to Supabase
+  const acceptSuggestion = async (contactId, result) => {
+    const updates = {};
+    if (result.email && result.email !== 'UNKNOWN') updates.email = result.email;
+    if (result.phone && result.phone !== 'UNKNOWN') updates.phone = result.phone;
+
+    if (Object.keys(updates).length === 0) return;
+
+    const { error } = await supabase
+      .from('contacts')
+      .update(updates)
+      .eq('id', contactId);
+
+    if (error) {
+      addLog('error', `Failed to accept suggestion: ${error.message}`);
+    } else {
+      setContacts(prev => prev.map(c =>
+        c.id === contactId ? { ...c, ...updates } : c
+      ));
+      setEnrichedResults(prev => ({
+        ...prev,
+        [contactId]: { ...prev[contactId], accepted: true }
+      }));
+      addLog('success', `Accepted AI suggestion for ${result.original?.name || 'contact'}`);
+    }
   };
 
   // Verify single email with Hunter
@@ -224,7 +406,39 @@ JSON only, no other text.`;
 
   const enrichedCount = Object.keys(enrichedResults).length;
   const verifiedCount = Object.values(enrichedResults).filter(r => r.verified).length;
-  const highConfCount = Object.values(enrichedResults).filter(r => r.confidence === 'HIGH').length;
+
+  // Render editable cell
+  const renderEditableCell = (contact, field, displayFn) => {
+    const isEditing = editingCell?.id === contact.id && editingCell?.field === field;
+
+    if (isEditing) {
+      return (
+        <div className="inline-edit-wrap">
+          <input
+            className="inline-edit-input"
+            value={editValue}
+            onChange={e => setEditValue(e.target.value)}
+            onKeyDown={handleEditKeyDown}
+            autoFocus
+            placeholder={`Enter ${field}...`}
+          />
+          <button className="inline-edit-btn save" onClick={saveEdit} disabled={saving}>
+            <Check size={10} />
+          </button>
+          <button className="inline-edit-btn cancel" onClick={cancelEdit}>
+            <X size={10} />
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="editable-cell" onClick={() => startEdit(contact.id, field, contact[field])}>
+        {displayFn ? displayFn(contact[field]) : (contact[field] || '—')}
+        <Pencil size={9} className="edit-pencil" />
+      </div>
+    );
+  };
 
   return (
     <div className="enrich-page animate-in">
@@ -298,11 +512,31 @@ JSON only, no other text.`;
           <div className="missing-stat-label">AI Enriched</div>
         </div>
         <div className="missing-stat-card purple">
-          <Shield size={20} />
-          <div className="missing-stat-number">{verifiedCount}</div>
-          <div className="missing-stat-label">Verified</div>
+          <Edit3 size={20} />
+          <div className="missing-stat-number">{recentUpdates.length}</div>
+          <div className="missing-stat-label">Manual Updates</div>
         </div>
       </div>
+
+      {/* Recent Manual Updates Strip */}
+      {recentUpdates.length > 0 && (
+        <div className="recent-updates-strip">
+          <div className="recent-updates-header">
+            <Edit3 size={12} />
+            <span>Recent Manual Updates ({recentUpdates.length})</span>
+            <button className="btn btn-ghost btn-xs" onClick={() => setRecentUpdates([])}>Clear</button>
+          </div>
+          <div className="recent-updates-list">
+            {recentUpdates.slice(0, 5).map((u, i) => (
+              <div key={i} className="recent-update-item">
+                <span className="update-time">{u.time}</span>
+                <span className="update-field">{u.field}</span>
+                <span className="update-value">{typeof u.value === 'string' && u.value.length > 30 ? u.value.slice(0,28)+'…' : u.value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Industry Breakdown */}
       <div className="missing-by-industry">
@@ -318,7 +552,7 @@ JSON only, no other text.`;
                   <div className="ind-name">{ind.length > 20 ? ind.slice(0,18)+'…' : ind}</div>
                   <div className="ind-missing-bars">
                     <span className="missing-bar email-bar">
-                      <span style={{ width: `${(s.noEmail/s.total)*100}%` }} />
+                      <span style={{ width: `${s.total > 0 ? (s.noEmail/s.total)*100 : 0}%` }} />
                     </span>
                     <span className="missing-nums">
                       <Mail size={9} /> {s.noEmail}/{s.total}
@@ -342,18 +576,23 @@ JSON only, no other text.`;
             <option value="">All Industries</option>
             {INDUSTRY_SUMMARY.map(s => <option key={s.industry} value={s.industry}>{s.industry}</option>)}
           </select>
-          <span className="result-count">{candidates.length.toLocaleString()} contacts to enrich</span>
+          <span className="result-count">
+            {loading ? 'Loading...' : `${totalCount.toLocaleString()} contacts to enrich`}
+          </span>
         </div>
         <div className="enrich-actions">
           <button className="btn btn-primary"
-            disabled={enriching || candidates.length === 0 || !geminiKey}
-            onClick={() => runEnrichment(candidates.slice(0, 50))}>
+            disabled={enriching || totalCount === 0 || !geminiKey}
+            onClick={() => runEnrichment(contacts.slice(0, 50))}>
             {enriching ? <><Loader2 size={14} className="spin" /> Enriching...</> : <><Sparkles size={14} /> Enrich Top 50</>}
           </button>
           <button className="btn btn-ghost"
-            disabled={enriching || candidates.length === 0 || !geminiKey}
-            onClick={() => runEnrichment(paged)}>
+            disabled={enriching || totalCount === 0 || !geminiKey}
+            onClick={() => runEnrichment(contacts)}>
             <Zap size={14} /> Enrich This Page
+          </button>
+          <button className="btn btn-ghost btn-sm" onClick={() => { loadContacts(); loadStats(); }}>
+            <RefreshCw size={12} /> Refresh
           </button>
           <button className="btn btn-ghost btn-sm" onClick={() => setShowLogs(!showLogs)}>
             {showLogs ? <ChevronUp size={12} /> : <ChevronDown size={12} />} Logs ({logs.length})
@@ -384,8 +623,13 @@ JSON only, no other text.`;
         </div>
       )}
 
-      {/* Contact Table with Enrichment Results */}
+      {/* Contact Table with Manual Edit + AI Enrichment */}
       <div className="enrich-table-wrap">
+        <div className="enrich-table-toolbar">
+          <span className="table-info">
+            <Edit3 size={12} /> Click any <span className="highlight">email</span>, <span className="highlight">phone</span>, or <span className="highlight">title</span> cell to edit manually
+          </span>
+        </div>
         <table className="enrich-table">
           <thead>
             <tr>
@@ -393,8 +637,8 @@ JSON only, no other text.`;
               <th>Name</th>
               <th>Company</th>
               <th>Title</th>
-              <th>Current Email</th>
-              <th>Current Phone</th>
+              <th>Email</th>
+              <th>Phone</th>
               <th>AI Suggested Email</th>
               <th>Confidence</th>
               <th>AI Phone</th>
@@ -402,18 +646,37 @@ JSON only, no other text.`;
             </tr>
           </thead>
           <tbody>
-            {paged.map((c, i) => {
-              const key = `${c.company}__${c.name}`;
-              const result = enrichedResults[key];
+            {loading ? (
+              <tr><td colSpan={10} style={{ textAlign: 'center', padding: 40, color: '#94A3B8' }}>
+                <div className="loading-spinner" /> Loading contacts from database...
+              </td></tr>
+            ) : contacts.map((c) => {
+              const result = enrichedResults[c.id];
               const color = INDUSTRY_COLORS[c.industry] || '#94A3B8';
               return (
-                <tr key={i}>
-                  <td><span className="industry-badge" style={{ background: `${color}15`, color }}>{INDUSTRY_ICONS[c.industry]} {c.industry.length > 12 ? c.industry.slice(0,10)+'…' : c.industry}</span></td>
-                  <td className="contact-name">{c.name || '—'}</td>
+                <tr key={c.id}>
+                  <td><span className="industry-badge" style={{ background: `${color}15`, color }}>{INDUSTRY_ICONS[c.industry]} {c.industry?.length > 12 ? c.industry.slice(0,10)+'…' : c.industry}</span></td>
+                  <td className="contact-name">
+                    {renderEditableCell(c, 'name', (val) => val || '—')}
+                  </td>
                   <td className="contact-company">{c.company || '—'}</td>
-                  <td style={{ fontSize: 11, color: '#64748B' }}>{c.title || '—'}</td>
-                  <td>{c.email && c.email.includes('@') ? <span className="has-data">{c.email}</span> : <span className="missing-data">✕ Missing</span>}</td>
-                  <td>{c.phone && c.phone.length > 4 ? <span className="has-data">{c.phone}</span> : <span className="missing-data">✕ Missing</span>}</td>
+                  <td style={{ fontSize: 11, color: '#64748B', maxWidth: 140 }}>
+                    {renderEditableCell(c, 'title', (val) => val || '—')}
+                  </td>
+                  <td>
+                    {renderEditableCell(c, 'email', (val) =>
+                      val && val.includes('@')
+                        ? <span className="has-data">{val}</span>
+                        : <span className="missing-data">✕ Missing</span>
+                    )}
+                  </td>
+                  <td>
+                    {renderEditableCell(c, 'phone', (val) =>
+                      val && val.length > 4
+                        ? <span className="has-data">{val}</span>
+                        : <span className="missing-data">✕ Missing</span>
+                    )}
+                  </td>
                   <td>
                     {result ? (
                       result.email !== 'UNKNOWN' ? (
@@ -434,18 +697,31 @@ JSON only, no other text.`;
                   </td>
                   <td style={{ fontSize: 11, color: '#64748B' }}>{result?.phone || '—'}</td>
                   <td>
-                    {result && result.email !== 'UNKNOWN' && hunterKey && !result.verified && (
-                      <button className="btn btn-ghost btn-xs" onClick={() => verifyEmail(key, result.email)}>
-                        <Shield size={10} /> Verify
+                    <div className="action-buttons">
+                      {result && result.email !== 'UNKNOWN' && !result.accepted && (
+                        <button className="btn btn-ghost btn-xs accept-btn" onClick={() => acceptSuggestion(c.id, result)} title="Accept AI suggestion and save to database">
+                          <Check size={10} /> Accept
+                        </button>
+                      )}
+                      {result?.accepted && (
+                        <span className="accepted-badge"><CheckCircle size={10} /> Saved</span>
+                      )}
+                      {result && result.email !== 'UNKNOWN' && hunterKey && !result.verified && (
+                        <button className="btn btn-ghost btn-xs" onClick={() => verifyEmail(c.id, result.email)}>
+                          <Shield size={10} /> Verify
+                        </button>
+                      )}
+                      <button className="btn btn-ghost btn-xs edit-full-btn" onClick={() => openEditModal(c)} title="Edit all fields">
+                        <Edit3 size={10} /> Edit
                       </button>
-                    )}
+                    </div>
                   </td>
                 </tr>
               );
             })}
-            {paged.length === 0 && (
+            {!loading && contacts.length === 0 && (
               <tr><td colSpan={10} style={{ textAlign: 'center', padding: 40, color: '#94A3B8' }}>
-                {candidates.length === 0 ? '🎉 All contacts in this segment have data!' : 'No contacts to show'}
+                {totalCount === 0 ? '🎉 All contacts in this segment have data!' : 'No contacts to show'}
               </td></tr>
             )}
           </tbody>
@@ -454,7 +730,7 @@ JSON only, no other text.`;
         {/* Pagination */}
         {totalPages > 1 && (
           <div className="explorer-pagination">
-            <span className="explorer-pagination-info">{((page-1)*PER_PAGE)+1}–{Math.min(page*PER_PAGE, candidates.length)} of {candidates.length.toLocaleString()}</span>
+            <span className="explorer-pagination-info">{((page-1)*PER_PAGE)+1}–{Math.min(page*PER_PAGE, totalCount)} of {totalCount.toLocaleString()}</span>
             <div className="explorer-pagination-buttons">
               <button className="page-btn" disabled={page===1} onClick={() => setPage(1)}>«</button>
               <button className="page-btn" disabled={page===1} onClick={() => setPage(p => p-1)}>‹</button>
@@ -468,6 +744,78 @@ JSON only, no other text.`;
           </div>
         )}
       </div>
+
+      {/* Full Edit Modal */}
+      {editModal && (
+        <div className="pw-modal-overlay" onClick={() => setEditModal(null)}>
+          <div className="edit-modal" onClick={e => e.stopPropagation()}>
+            <div className="edit-modal-header">
+              <div className="edit-modal-icon">
+                <Edit3 size={20} color="#10B981" />
+              </div>
+              <div>
+                <h3>Edit Contact</h3>
+                <p>Manually update contact information — saved directly to database</p>
+              </div>
+              <button className="pw-modal-close" onClick={() => setEditModal(null)}>×</button>
+            </div>
+
+            <div className="edit-modal-body">
+              <div className="edit-modal-info">
+                <span className="industry-badge" style={{ background: `${INDUSTRY_COLORS[editModal.industry] || '#94A3B8'}15`, color: INDUSTRY_COLORS[editModal.industry] }}>
+                  {INDUSTRY_ICONS[editModal.industry]} {editModal.industry}
+                </span>
+                <span className="edit-company-name">{editModal.company}</span>
+              </div>
+
+              <div className="edit-form-grid">
+                <div className="edit-form-group">
+                  <label>Full Name</label>
+                  <input value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
+                    placeholder="Enter full name..." />
+                </div>
+                <div className="edit-form-group">
+                  <label>Job Title</label>
+                  <input value={editForm.title} onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))}
+                    placeholder="Enter job title..." />
+                </div>
+                <div className="edit-form-group full-width">
+                  <label><Mail size={12} /> Email Address</label>
+                  <input value={editForm.email} onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))}
+                    placeholder="name@company.com" type="email" className="highlight-field" />
+                </div>
+                <div className="edit-form-group full-width">
+                  <label><Phone size={12} /> Phone Number</label>
+                  <input value={editForm.phone} onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))}
+                    placeholder="+91-XXXXX-XXXXX" type="tel" className="highlight-field" />
+                </div>
+                <div className="edit-form-group full-width">
+                  <label>LinkedIn Profile</label>
+                  <input value={editForm.linkedin} onChange={e => setEditForm(f => ({ ...f, linkedin: e.target.value }))}
+                    placeholder="https://linkedin.com/in/..." />
+                </div>
+                <div className="edit-form-group">
+                  <label>Location</label>
+                  <input value={editForm.location} onChange={e => setEditForm(f => ({ ...f, location: e.target.value }))}
+                    placeholder="City, Country" />
+                </div>
+                <div className="edit-form-group">
+                  <label>Lead Score</label>
+                  <input value={editForm.score} onChange={e => setEditForm(f => ({ ...f, score: e.target.value }))}
+                    placeholder="0-100" />
+                </div>
+              </div>
+            </div>
+
+            <div className="edit-modal-footer">
+              <button className="pw-btn-cancel" onClick={() => setEditModal(null)}>Cancel</button>
+              <button className="pw-btn-save" onClick={saveEditModal} disabled={saving}>
+                {saving ? <span className="pw-spinner" /> : <><Save size={14} /> Save Changes</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
