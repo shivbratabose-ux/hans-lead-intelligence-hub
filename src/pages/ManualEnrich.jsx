@@ -8,6 +8,8 @@ import {
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../auth/AuthContext';
 import { INDUSTRY_COLORS, INDUSTRY_ICONS, INDUSTRY_SUMMARY } from '../data/realContacts';
+import { DQBadge } from '../components/DQBadge';
+import { computeDQScore } from '../lib/dataQuality';
 import './ManualEnrich.css';
 
 const PER_PAGE = 25;
@@ -168,7 +170,13 @@ export default function ManualEnrich() {
     if (error) {
       showToast(`Failed to save: ${error.message}`, 'error');
     } else {
-      setContacts(prev => prev.map(c => c.id === id ? { ...c, [field]: newVal } : c));
+      // Recompute DQ score client-side for instant feedback
+      const updatedContact = { ...contact, [field]: newVal };
+      const newDQScore = computeDQScore(updatedContact);
+      setContacts(prev => prev.map(c => c.id === id
+        ? { ...c, [field]: newVal, data_quality_score: newDQScore }
+        : c
+      ));
       addAuditEntry(contact, { [field]: { from: oldVal, to: newVal } });
       showToast(`${field} updated ✓`);
     }
@@ -226,7 +234,13 @@ export default function ManualEnrich() {
     if (error) {
       showToast(`Save failed: ${error.message}`, 'error');
     } else {
-      setContacts(prev => prev.map(c => c.id === editModal.id ? { ...c, ...updates } : c));
+      // Recompute DQ score after full modal save
+      const updatedContact = { ...editModal, ...updates };
+      const newDQScore = computeDQScore(updatedContact);
+      setContacts(prev => prev.map(c => c.id === editModal.id
+        ? { ...c, ...updates, data_quality_score: newDQScore }
+        : c
+      ));
       const changeDetails = {};
       Object.entries(updates).forEach(([k, v]) => {
         changeDetails[k] = { from: editModal[k] || null, to: v };
@@ -429,6 +443,7 @@ export default function ManualEnrich() {
         <table className="me-table">
           <thead>
             <tr>
+              <th>DQ</th>
               <th>Industry</th>
               <th>Name</th>
               <th>Company</th>
@@ -442,11 +457,11 @@ export default function ManualEnrich() {
           </thead>
           <tbody>
             {loading && contacts.length === 0 ? (
-              <tr><td colSpan={9} className="me-table-loading">
+              <tr><td colSpan={10} className="me-table-loading">
                 <Loader2 size={20} className="spin"/> Loading contacts…
               </td></tr>
             ) : contacts.length === 0 ? (
-              <tr><td colSpan={9} className="me-table-empty">
+              <tr><td colSpan={10} className="me-table-empty">
                 <Search size={28}/>
                 <p>No contacts found</p>
                 <small>{debouncedSearch ? `No results for "${debouncedSearch}"` : 'Try adjusting your filters'}</small>
@@ -457,6 +472,7 @@ export default function ManualEnrich() {
               const hasPhone = c.phone && c.phone.length > 4;
               return (
                 <tr key={c.id} className={`me-row ${editingCell?.id === c.id ? 'editing' : ''}`}>
+                  <td><DQBadge score={c.data_quality_score} contact={c} size="sm" /></td>
                   <td>
                     <span className="me-ind-badge" style={{ background: `${color}18`, color }}>
                       <span>{INDUSTRY_ICONS[c.industry] || '📁'}</span>

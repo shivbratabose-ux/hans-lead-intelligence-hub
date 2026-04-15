@@ -1,0 +1,303 @@
+/* ===== DQBadge.css ===== */
+
+/* ─── Badge ─────────────────────────────────────────────── */
+.dq-badge-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.dq-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 6px;
+  border: 1px solid;
+  font-weight: 700;
+  cursor: default;
+  white-space: nowrap;
+  transition: transform 0.12s;
+}
+
+.dq-badge-wrap:hover .dq-badge {
+  transform: translateY(-1px);
+}
+
+.dq-size-sm .dq-badge { padding: 1px 6px; font-size: 10px; }
+.dq-size-md .dq-badge { padding: 3px 8px; font-size: 11px; }
+
+.dq-grade { font-size: 1.1em; }
+.dq-score { opacity: 0.75; font-weight: 500; }
+
+/* ─── Tooltip ────────────────────────────────────────────── */
+.dq-tooltip {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #0F172A;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 10px;
+  padding: 10px 12px;
+  min-width: 200px;
+  z-index: 9999;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+  animation: dq-tip-in 0.15s ease;
+}
+
+@keyframes dq-tip-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(-4px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.dq-tooltip::before {
+  content: '';
+  position: absolute;
+  top: -5px;
+  left: 50%;
+  transform: translateX(-50%) rotate(45deg);
+  width: 8px;
+  height: 8px;
+  background: #0F172A;
+  border-left: 1px solid rgba(255,255,255,0.1);
+  border-top: 1px solid rgba(255,255,255,0.1);
+}
+
+.dq-tooltip-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.dq-tooltip-grade {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.dq-tooltip-pts {
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.dq-tooltip-bar-wrap {
+  height: 4px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.dq-tooltip-bar {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.dq-tooltip-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.dq-field-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+}
+
+.dq-field-icon {
+  width: 14px;
+  text-align: center;
+  font-size: 10px;
+  flex-shrink: 0;
+}
+
+.dq-field-row.present .dq-field-icon { color: #10B981; }
+.dq-field-row.missing .dq-field-icon { color: #475569; }
+
+.dq-field-label {
+  flex: 1;
+  color: #CBD5E1;
+}
+
+.dq-field-row.missing .dq-field-label { color: #475569; }
+
+.dq-field-pts {
+  font-weight: 700;
+  font-size: 10px;
+  min-width: 28px;
+  text-align: right;
+}
+
+/* ─── Summary Panel ──────────────────────────────────────── */
+.dq-summary-panel {
+  display: flex;
+  gap: 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px 22px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.dq-summary-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+.dq-summary-score-ring {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  flex-shrink: 0;
+}
+
+.dq-ring-svg {
+  width: 80px;
+  height: 80px;
+  transform: rotate(-90deg);
+}
+
+.dq-ring-bg {
+  fill: none;
+  stroke: rgba(255,255,255,0.06);
+  stroke-width: 6;
+}
+
+.dq-ring-fill {
+  fill: none;
+  stroke-width: 6;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.6s cubic-bezier(.4,0,.2,1);
+}
+
+.dq-ring-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.dq-ring-score {
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--text);
+}
+
+.dq-ring-sub {
+  font-size: 9px;
+  color: #64748B;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.dq-summary-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dq-summary-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.dq-summary-subtitle {
+  font-size: 11px;
+  color: #64748B;
+  margin-bottom: 6px;
+}
+
+.dq-grade-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.dq-grade-pill {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 11px;
+}
+
+.dq-grade-letter {
+  font-weight: 800;
+  font-size: 12px;
+}
+
+.dq-grade-count {
+  font-weight: 500;
+  opacity: 0.85;
+}
+
+/* Right side — field completeness */
+.dq-summary-right {
+  flex: 1;
+  min-width: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  justify-content: center;
+}
+
+.dq-completeness-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748B;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+
+.dq-completeness-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dq-completeness-label {
+  font-size: 11px;
+  color: #94A3B8;
+  width: 52px;
+  flex-shrink: 0;
+}
+
+.dq-completeness-bar-wrap {
+  flex: 1;
+  height: 6px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.dq-completeness-bar {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+
+.dq-completeness-pct {
+  font-size: 11px;
+  font-weight: 700;
+  width: 34px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.dq-completeness-pts {
+  font-size: 9px;
+  color: #475569;
+  width: 30px;
+  flex-shrink: 0;
+}

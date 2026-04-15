@@ -1,10 +1,11 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { Download, Mail, Phone, Link2, Filter, X, Search, SlidersHorizontal, Globe, Building2, Tag, Users, BarChart3, ShieldAlert, Lock, Clock, CheckCircle } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { useAuth } from '../auth/AuthContext';
 import { fetchContacts, fetchContactsForExport, fetchContactsSummary, fetchFilterOptions } from '../lib/contactsApi';
 import { INDUSTRY_COLORS, INDUSTRY_ICONS, INDUSTRY_PRODUCTS } from '../data/realContacts';
 import { supabase } from '../lib/supabase';
+import { DQBadge, DQSummaryPanel } from '../components/DQBadge';
 import './ContactExplorer.css';
 
 const PER_PAGE = 30;
@@ -61,6 +62,7 @@ export default function ContactExplorer() {
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState(null);
   const [filterOptions, setFilterOptions] = useState({ countries: [], regions: [], contactTypes: [], sources: [] });
+  const [dqStats, setDqStats] = useState(null);
 
   // Export gate
   const [showExportModal, setShowExportModal] = useState(false);
@@ -85,12 +87,38 @@ export default function ContactExplorer() {
   }, [selectedIndustry, debouncedSearch, page, countryFilter, regionFilter, typeFilter, sourceFilter, emailFilter, phoneFilter]);
 
   const loadSummaryAndFilters = async () => {
-    const [summaryData, options] = await Promise.all([
+    const [summaryData, options, dqResult] = await Promise.all([
       fetchContactsSummary(),
       fetchFilterOptions(),
+      supabase.rpc('get_dq_stats').then(r => r.data).catch(() => null),
     ]);
     if (summaryData) setSummary(summaryData);
     if (options) setFilterOptions(options);
+    // Fallback if RPC not set up yet — use direct query
+    if (!dqResult) {
+      const { data } = await supabase
+        .from('contacts')
+        .select('data_quality_score, email, phone, linkedin')
+        .limit(24999);
+      if (data) {
+        const total = data.length;
+        const avg_score = Math.round(data.reduce((s, c) => s + (c.data_quality_score || 0), 0) / total);
+        setDqStats({
+          total,
+          avg_score,
+          grade_a: data.filter(c => (c.data_quality_score||0) >= 80).length,
+          grade_b: data.filter(c => (c.data_quality_score||0) >= 60 && (c.data_quality_score||0) < 80).length,
+          grade_c: data.filter(c => (c.data_quality_score||0) >= 40 && (c.data_quality_score||0) < 60).length,
+          grade_d: data.filter(c => (c.data_quality_score||0) >= 20 && (c.data_quality_score||0) < 40).length,
+          grade_f: data.filter(c => (c.data_quality_score||0) < 20).length,
+          has_email: data.filter(c => c.email && c.email.includes('@')).length,
+          has_phone: data.filter(c => c.phone && c.phone.trim().length > 4).length,
+          has_linkedin: data.filter(c => c.linkedin && c.linkedin.trim() !== '').length,
+        });
+      }
+    } else {
+      setDqStats(dqResult);
+    }
   };
 
   const loadContacts = async () => {
@@ -370,6 +398,9 @@ export default function ContactExplorer() {
         )}
       </div>
 
+      {/* Data Quality Summary */}
+      <DQSummaryPanel stats={dqStats} />
+
       {/* Industry Cards */}
       <div className="industry-grid">
         {industrySummary.map(ind => {
@@ -415,6 +446,7 @@ export default function ContactExplorer() {
           <table className="contact-table" style={!canExport ? { userSelect: 'none' } : {}}>
             <thead>
               <tr>
+                <th>DQ Score</th>
                 <th>Industry</th>
                 <th>Name</th>
                 <th>Company</th>
@@ -437,6 +469,7 @@ export default function ContactExplorer() {
                 const color = INDUSTRY_COLORS[c.industry] || '#94A3B8';
                 return (
                   <tr key={c.id || i}>
+                    <td><DQBadge score={c.data_quality_score} contact={c} size="sm" /></td>
                     <td>
                       <span className="industry-badge" style={{ background: `${color}15`, color }}>
                         {INDUSTRY_ICONS[c.industry]} {c.industry?.length > 14 ? c.industry.slice(0,12)+'…' : c.industry}
@@ -458,7 +491,7 @@ export default function ContactExplorer() {
                 );
               })}
               {!loading && contacts.length === 0 && (
-                <tr><td colSpan={11} style={{ textAlign: 'center', padding: 40, color: '#94A3B8' }}>No contacts match your filters</td></tr>
+                <tr><td colSpan={12} style={{ textAlign: 'center', padding: 40, color: '#94A3B8' }}>No contacts match your filters</td></tr>
               )}
             </tbody>
           </table>
