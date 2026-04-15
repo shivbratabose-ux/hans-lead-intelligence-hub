@@ -1,0 +1,613 @@
+/* ===== QualificationTracker.css ===== */
+
+.qt-page {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+}
+
+/* ── Header ─────────────────────────────────────────────── */
+.qt-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.qt-header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* ── Pipeline Banner ────────────────────────────────────── */
+.qt-pipeline-banner {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px 16px;
+  overflow-x: auto;
+  flex-wrap: nowrap;
+}
+
+.qt-stage-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background 0.12s, border-color 0.12s;
+  white-space: nowrap;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.qt-stage-pill:hover {
+  background: rgba(255,255,255,0.05);
+  border-color: rgba(255,255,255,0.1);
+}
+
+.qt-stage-pill.active {
+  background: rgba(var(--stage-color-rgb, 59,130,246), 0.12);
+  border-color: var(--stage-color, #3B82F6);
+}
+
+/* Since CSS custom properties don't do rgba() with hex, override per stage via inline */
+.qt-stage-pill.active { background: color-mix(in srgb, var(--stage-color) 14%, transparent); }
+
+.qt-stage-icon { font-size: 18px; }
+
+.qt-stage-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.qt-stage-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.qt-stage-count {
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.qt-stage-arrow {
+  color: #334155;
+  flex-shrink: 0;
+  margin: 0 2px;
+}
+
+.qt-pushed-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: rgba(6,182,212,0.1);
+  border: 1px solid rgba(6,182,212,0.25);
+  border-radius: 10px;
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 600;
+  color: #06B6D4;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ── Controls Row ───────────────────────────────────────── */
+.qt-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.qt-search-wrap {
+  position: relative;
+  flex: 1;
+  max-width: 340px;
+}
+
+.qt-search-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #475569;
+  pointer-events: none;
+}
+
+.qt-search {
+  width: 100%;
+  padding: 8px 10px 8px 32px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 12px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.qt-search:focus { border-color: var(--primary); }
+
+.qt-search-clear {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #475569;
+  display: grid;
+  place-items: center;
+  padding: 2px;
+}
+
+.qt-filter-select {
+  padding: 8px 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 12px;
+  outline: none;
+  cursor: pointer;
+  min-width: 140px;
+}
+
+.qt-refresh-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+  color: #64748B;
+  display: grid;
+  place-items: center;
+  transition: background 0.12s;
+}
+
+.qt-refresh-btn:hover { background: rgba(255,255,255,0.06); color: var(--text); }
+
+.qt-view-toggle {
+  display: flex;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.qt-view-toggle button {
+  padding: 8px 10px;
+  background: none;
+  border: none;
+  color: #64748B;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: background 0.12s, color 0.12s;
+}
+
+.qt-view-toggle button.active {
+  background: rgba(255,255,255,0.08);
+  color: var(--text);
+}
+
+/* ── Table ──────────────────────────────────────────────── */
+.qt-table-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.qt-table-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.qt-table-stage-label {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.qt-table-count {
+  font-size: 11px;
+  color: #64748B;
+  font-weight: 400;
+}
+
+.qt-table-desc {
+  font-size: 11px;
+  color: #475569;
+}
+
+.qt-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.qt-table th {
+  padding: 9px 12px;
+  text-align: left;
+  font-size: 10px;
+  font-weight: 700;
+  color: #64748B;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-bottom: 1px solid var(--border);
+  background: rgba(255,255,255,0.02);
+  white-space: nowrap;
+}
+
+.qt-table td {
+  padding: 9px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  color: var(--text);
+  vertical-align: middle;
+}
+
+.qt-table tr:last-child td { border-bottom: none; }
+.qt-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+.qt-row-moving td { opacity: 0.4; }
+
+.qt-name { font-weight: 600; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.qt-company { color: #94A3B8; max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.qt-country { font-size: 11px; color: #64748B; }
+.qt-empty-val { color: #334155; }
+
+.qt-ind-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.qt-email {
+  color: #3B82F6;
+  text-decoration: none;
+  font-size: 11px;
+}
+.qt-email:hover { text-decoration: underline; }
+
+.qt-phone { color: #10B981; font-size: 11px; }
+
+.qt-missing {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: #475569;
+  font-size: 10px;
+}
+
+/* ── Stage Action Buttons ───────────────────────────────── */
+.qt-actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.qt-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid;
+  transition: all 0.12s;
+  white-space: nowrap;
+}
+
+.qt-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.qt-btn-back {
+  background: transparent;
+  border-color: rgba(255,255,255,0.1);
+  color: #64748B;
+  padding: 4px 8px;
+  font-size: 12px;
+}
+.qt-btn-back:hover:not(:disabled) { background: rgba(255,255,255,0.05); }
+
+.qt-btn-advance {
+  background: rgba(59,130,246,0.12);
+  border-color: rgba(59,130,246,0.3);
+  color: #3B82F6;
+}
+.qt-btn-advance:hover:not(:disabled) {
+  background: rgba(59,130,246,0.2);
+  border-color: #3B82F6;
+}
+
+.qt-btn-crm {
+  background: rgba(16,185,129,0.12);
+  border-color: rgba(16,185,129,0.4);
+  color: #10B981;
+  font-weight: 700;
+}
+.qt-btn-crm:hover:not(:disabled) {
+  background: rgba(16,185,129,0.22);
+  border-color: #10B981;
+  box-shadow: 0 0 12px rgba(16,185,129,0.3);
+}
+
+/* ── Empty / Loading State ──────────────────────────────── */
+.qt-loading, .qt-empty {
+  text-align: center;
+  padding: 48px 20px;
+  color: #64748B;
+}
+.qt-loading { display: flex; align-items: center; justify-content: center; gap: 10px; }
+.qt-empty { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.qt-empty p { margin: 0; font-size: 14px; color: #475569; }
+.qt-empty small { font-size: 11px; }
+
+/* ── Pagination ─────────────────────────────────────────── */
+.qt-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 4px;
+}
+
+.qt-page-info {
+  font-size: 11px;
+  color: #64748B;
+}
+
+.qt-page-btns {
+  display: flex;
+  gap: 4px;
+}
+
+.qt-page-btn {
+  padding: 5px 9px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: #64748B;
+  font-size: 12px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.1s;
+}
+
+.qt-page-btn:hover:not(:disabled) { background: rgba(255,255,255,0.06); color: var(--text); }
+.qt-page-btn.active { background: var(--primary); border-color: var(--primary); color: white; }
+.qt-page-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+/* ── KANBAN VIEW ────────────────────────────────────────── */
+.qt-kanban {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+  align-items: start;
+  min-height: 400px;
+}
+
+.qt-kanban-loading {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 60px;
+  color: #64748B;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.qt-kanban-col {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-top: 3px solid var(--col-color, #3B82F6);
+}
+
+.qt-kanban-col-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+}
+
+.qt-kanban-count {
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.qt-kanban-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.qt-kanban-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 8px;
+  padding: 10px 10px 8px;
+  transition: box-shadow 0.12s;
+}
+
+.qt-kanban-card:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+  border-color: rgba(255,255,255,0.1);
+}
+
+.qt-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 6px;
+  margin-bottom: 3px;
+}
+
+.qt-card-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.qt-card-company {
+  font-size: 10px;
+  color: #94A3B8;
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.qt-card-ind {
+  font-size: 10px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.qt-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 8px;
+}
+
+.qt-card-has { color: #10B981; display: flex; }
+.qt-card-miss { color: #334155; display: flex; }
+
+.qt-card-country {
+  font-size: 9px;
+  color: #475569;
+  margin-left: auto;
+}
+
+.qt-card-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.qt-card-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 5px 6px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid;
+  transition: all 0.12s;
+}
+
+.qt-card-btn.advance {
+  background: rgba(59,130,246,0.1);
+  border-color: rgba(59,130,246,0.25);
+  color: #3B82F6;
+}
+.qt-card-btn.advance:hover:not(:disabled) { background: rgba(59,130,246,0.2); }
+
+.qt-card-btn.crm {
+  background: rgba(16,185,129,0.12);
+  border-color: rgba(16,185,129,0.35);
+  color: #10B981;
+  font-weight: 700;
+}
+.qt-card-btn.crm:hover:not(:disabled) {
+  background: rgba(16,185,129,0.22);
+  box-shadow: 0 0 8px rgba(16,185,129,0.3);
+}
+
+.qt-card-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.qt-kanban-more {
+  text-align: center;
+  font-size: 10px;
+  color: #475569;
+  padding: 8px;
+  border: 1px dashed rgba(255,255,255,0.08);
+  border-radius: 6px;
+}
+
+/* ── Spin ───────────────────────────────────────────────── */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin { animation: spin 0.8s linear infinite; }
+
+/* ── Toast ──────────────────────────────────────────────── */
+.qt-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #0F172A;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 10px;
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 9999;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+  animation: toast-in 0.2s ease;
+}
+.qt-toast.error { border-color: rgba(239,68,68,0.4); color: #EF4444; }
+.qt-toast.success > svg { color: #10B981; }
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* ── Responsive ─────────────────────────────────────────── */
+@media (max-width: 1200px) {
+  .qt-kanban { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 800px) {
+  .qt-kanban { grid-template-columns: repeat(2, 1fr); }
+  .qt-pipeline-banner { flex-wrap: wrap; }
+}

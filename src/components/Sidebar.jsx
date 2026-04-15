@@ -1,8 +1,7 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
-  Inbox,
-  Kanban,
+  Target,
   Bot,
   CalendarDays,
   BarChart3,
@@ -12,34 +11,38 @@ import {
   Database,
   GitBranch,
   Sparkles,
-  TableProperties,
   Users,
   Wand2,
   FileUp,
   ClipboardEdit,
+  ExternalLink,
 } from 'lucide-react';
 import './Sidebar.css';
 
 const NAV_ITEMS = [
-  { section: 'Main' },
-  { path: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/leads', label: 'Lead Inbox', icon: Inbox, badge: 8 },
-  { path: '/pipeline', label: 'Pipeline Board', icon: Kanban },
-  { path: '/assistant', label: 'AI Assistant', icon: Bot },
-  { section: 'Data Engine' },
-  { path: '/sources', label: 'Data Sources', icon: Database },
-  { path: '/workflows', label: 'Enrichment Flows', icon: GitBranch },
-  { path: '/ai-lab', label: 'AI Lab', icon: Sparkles, badge: 'NEW' },
-  { path: '/data', label: 'Lead Database', icon: TableProperties },
-  { path: '/contacts', label: 'Contact Explorer', icon: Users, badge: '24.5K' },
-  { path: '/enrich', label: 'AI Enrichment', icon: Wand2, badge: 'AI' },
-  { path: '/manual-enrich', label: 'Manual Enrich', icon: ClipboardEdit },
-  { path: '/import', label: 'Smart Import', icon: FileUp },
-  { section: 'Manage' },
-  { path: '/events', label: 'Events', icon: CalendarDays },
-  { path: '/reports', label: 'Reports', icon: BarChart3 },
-  { path: '/admin', label: 'Admin', icon: Settings },
+  { section: 'Command Center' },
+  { path: '/',           label: 'Dashboard',             icon: LayoutDashboard },
+  { path: '/qualify',    label: 'Qualification Tracker', icon: Target,    badge: 'NEW' },
+  { path: '/assistant',  label: 'AI Assistant',          icon: Bot },
+
+  { section: 'Contact Universe' },
+  { path: '/contacts',      label: 'Contact Universe',  icon: Users,        badge: '24.5K' },
+  { path: '/enrich',        label: 'AI Enrichment',     icon: Wand2,        badge: 'AI' },
+  { path: '/manual-enrich', label: 'Manual Enrich',     icon: ClipboardEdit },
+  { path: '/import',        label: 'Smart Import',      icon: FileUp },
+
+  { section: 'Intelligence' },
+  { path: '/sources',    label: 'Data Sources',          icon: Database },
+  { path: '/workflows',  label: 'Enrichment Flows',      icon: GitBranch },
+  { path: '/ai-lab',     label: 'AI Lab',                icon: Sparkles,  badge: 'AI' },
+
+  { section: 'Operations' },
+  { path: '/events',     label: 'Events & Campaigns',    icon: CalendarDays },
+  { path: '/reports',    label: 'Reports',               icon: BarChart3 },
+  { path: '/admin',      label: 'Admin',                 icon: Settings },
 ];
+
+const CRM_LINK = 'https://smartcrm-hans.vercel.app';
 
 export default function Sidebar({ collapsed, onToggle }) {
   const location = useLocation();
@@ -81,6 +84,18 @@ export default function Sidebar({ collapsed, onToggle }) {
             </NavLink>
           );
         })}
+
+        {/* CRM Handoff Link */}
+        <div className="sidebar-section-label" style={{ marginTop: 8 }}>CRM Handoff</div>
+        <a
+          href={CRM_LINK}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="sidebar-link sidebar-crm-link"
+        >
+          <ExternalLink />
+          <span className="sidebar-link-text">SmartCRM ↗</span>
+        </a>
       </nav>
 
       <div className="sidebar-footer">

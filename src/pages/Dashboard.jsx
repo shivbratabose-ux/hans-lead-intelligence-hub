@@ -1,248 +1,273 @@
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  LineChart, Line, PieChart, Pie, Cell, CartesianGrid, Area, AreaChart
-} from 'recharts';
-import { Users, Flame, CheckCircle2, Clock, TrendingUp, TrendingDown } from 'lucide-react';
-import LEADS, { LEAD_STATS, LEADS_BY_SOURCE, LEADS_BY_PRODUCT, LEAD_TREND, FUNNEL_DATA } from '../data/leads';
+  Users, Mail, Phone, Wand2, Upload, Target, ArrowRight,
+  TrendingUp, Database, Sparkles, CheckCircle2, Flame,
+  Activity, BarChart3, RefreshCw, ExternalLink, ClipboardEdit,
+} from 'lucide-react';
+import { supabase } from '../lib/supabase';
+import { DQSummaryPanel } from '../components/DQBadge';
 import './Dashboard.css';
 
-const COLORS = ['#10B981', '#006853', '#3B82F6', '#8B5CF6', '#F59E0B', '#EF4444'];
+const STAGE_CONFIG = {
+  raw:       { label: 'Raw',       icon: '🧊', color: '#94A3B8', bg: 'rgba(148,163,184,0.12)' },
+  targeted:  { label: 'Targeted',  icon: '🔍', color: '#3B82F6', bg: 'rgba(59,130,246,0.12)'  },
+  contacted: { label: 'Contacted', icon: '📬', color: '#F59E0B', bg: 'rgba(245,158,11,0.12)'  },
+  engaged:   { label: 'Engaged',   icon: '💬', color: '#8B5CF6', bg: 'rgba(139,92,246,0.12)'  },
+  warm:      { label: 'Warm',      icon: '🔥', color: '#10B981', bg: 'rgba(16,185,129,0.12)'  },
+  pushed:    { label: 'In CRM',    icon: '✅', color: '#06B6D4', bg: 'rgba(6,182,212,0.12)'   },
+};
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const hotLeads = LEADS.filter(l => l.band === 'Hot').slice(0, 8);
+  const [stats, setStats] = useState(null);
+  const [stages, setStages] = useState([]);
+  const [topIndustries, setTopIndustries] = useState([]);
+  const [dqStats, setDqStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [lastRefresh, setLastRefresh] = useState(new Date());
+
+  useEffect(() => { loadAll(); }, []);
+
+  const loadAll = async () => {
+    setLoading(true);
+    const [totals, stageCounts, industries, dq] = await Promise.all([
+      // Total + email/phone completeness
+      supabase.from('contacts').select('id, email, phone', { count: 'exact', head: false })
+        .limit(1).then(async () => {
+          const { count } = await supabase.from('contacts').select('*', { count: 'exact', head: true });
+          const { count: emailCount } = await supabase.from('contacts').select('*', { count: 'exact', head: true }).not('email', 'is', null).ilike('email', '%@%');
+          const { count: phoneCount } = await supabase.from('contacts').select('*', { count: 'exact', head: true }).not('phone', 'is', null).neq('phone', '');
+          return { total: count || 0, withEmail: emailCount || 0, withPhone: phoneCount || 0 };
+        }),
+
+      // Stage breakdown
+      supabase.rpc('get_stage_counts').then(r => r.data)
+        .catch(async () => {
+          const { data } = await supabase.from('contacts').select('qual_stage');
+          if (!data) return [];
+          const map = {};
+          data.forEach(r => { map[r.qual_stage] = (map[r.qual_stage] || 0) + 1; });
+          return Object.entries(map).map(([qual_stage, count]) => ({ qual_stage, count }));
+        }),
+
+      // Top 6 industries
+      supabase.from('contacts').select('industry').then(({ data }) => {
+        if (!data) return [];
+        const map = {};
+        data.forEach(r => { if (r.industry) map[r.industry] = (map[r.industry] || 0) + 1; });
+        return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([industry, count]) => ({ industry, count }));
+      }),
+
+      // DQ stats
+      supabase.from('contacts').select('data_quality_score').then(({ data }) => {
+        if (!data) return null;
+        const total = data.length;
+        const avg = Math.round(data.reduce((s, c) => s + (c.data_quality_score || 0), 0) / total);
+        return {
+          total,
+          avg_score: avg,
+          grade_a: data.filter(c => (c.data_quality_score || 0) >= 80).length,
+          grade_b: data.filter(c => (c.data_quality_score || 0) >= 60 && (c.data_quality_score || 0) < 80).length,
+          grade_c: data.filter(c => (c.data_quality_score || 0) >= 40 && (c.data_quality_score || 0) < 60).length,
+          grade_d: data.filter(c => (c.data_quality_score || 0) >= 20 && (c.data_quality_score || 0) < 40).length,
+          grade_f: data.filter(c => (c.data_quality_score || 0) < 20).length,
+          has_email: data.length, has_phone: data.length, has_linkedin: 0,
+        };
+      }),
+    ]);
+
+    setStats(totals);
+    setStages(stageCounts || []);
+    setTopIndustries(industries);
+    setDqStats(dq);
+    setLastRefresh(new Date());
+    setLoading(false);
+  };
+
+  const getStageCount = (key) => {
+    const s = stages.find(s => s.qual_stage === key);
+    return s ? Number(s.count) : 0;
+  };
+
+  const total = stats?.total || 0;
+  const warmCount = getStageCount('warm');
+  const targetedCount = getStageCount('targeted');
+  const pushedCount = getStageCount('pushed');
 
   return (
     <div className="dashboard animate-in">
-      {/* KPI Cards */}
-      <div className="dashboard-kpis stagger">
-        <div className="kpi-card">
-          <div className="kpi-icon green"><Users size={22} /></div>
-          <div className="kpi-content">
-            <div className="kpi-label">Total Leads Today</div>
-            <div className="kpi-value">{LEAD_STATS.totalToday}</div>
-            <span className="kpi-change up"><TrendingUp size={12} /> +23%</span>
+
+      {/* ── KPI Strip ── */}
+      <div className="dash-kpi-strip">
+        <div className="dash-kpi">
+          <div className="dash-kpi-icon" style={{ background: 'rgba(16,185,129,0.12)' }}>
+            <Users size={20} color="#10B981" />
+          </div>
+          <div className="dash-kpi-body">
+            <div className="dash-kpi-val">{loading ? '—' : total.toLocaleString()}</div>
+            <div className="dash-kpi-label">Total Contacts</div>
           </div>
         </div>
-        <div className="kpi-card qualified">
-          <div className="kpi-icon blue"><CheckCircle2 size={22} /></div>
-          <div className="kpi-content">
-            <div className="kpi-label">Qualified Leads</div>
-            <div className="kpi-value">{LEAD_STATS.qualified}</div>
-            <span className="kpi-change up"><TrendingUp size={12} /> +15%</span>
+        <div className="dash-kpi">
+          <div className="dash-kpi-icon" style={{ background: 'rgba(59,130,246,0.12)' }}>
+            <Mail size={20} color="#3B82F6" />
+          </div>
+          <div className="dash-kpi-body">
+            <div className="dash-kpi-val">{loading ? '—' : stats?.withEmail?.toLocaleString()}</div>
+            <div className="dash-kpi-label">Have Email</div>
           </div>
         </div>
-        <div className="kpi-card hot">
-          <div className="kpi-icon red"><Flame size={22} /></div>
-          <div className="kpi-content">
-            <div className="kpi-label">Hot Leads</div>
-            <div className="kpi-value">{LEAD_STATS.hot}</div>
-            <span className="kpi-change up"><TrendingUp size={12} /> +8%</span>
+        <div className="dash-kpi">
+          <div className="dash-kpi-icon" style={{ background: 'rgba(245,158,11,0.12)' }}>
+            <Phone size={20} color="#F59E0B" />
+          </div>
+          <div className="dash-kpi-body">
+            <div className="dash-kpi-val">{loading ? '—' : stats?.withPhone?.toLocaleString()}</div>
+            <div className="dash-kpi-label">Have Phone</div>
           </div>
         </div>
-        <div className="kpi-card">
-          <div className="kpi-icon amber"><Clock size={22} /></div>
-          <div className="kpi-content">
-            <div className="kpi-label">Pending Follow-ups</div>
-            <div className="kpi-value">{LEAD_STATS.pendingFollowUps}</div>
-            <span className="kpi-change down"><TrendingDown size={12} /> 3 overdue</span>
+        <div className="dash-kpi">
+          <div className="dash-kpi-icon" style={{ background: 'rgba(16,185,129,0.12)' }}>
+            <Flame size={20} color="#10B981" />
+          </div>
+          <div className="dash-kpi-body">
+            <div className="dash-kpi-val">{loading ? '—' : warmCount}</div>
+            <div className="dash-kpi-label">Warm — Ready for CRM</div>
+          </div>
+        </div>
+        <div className="dash-kpi">
+          <div className="dash-kpi-icon" style={{ background: 'rgba(6,182,212,0.12)' }}>
+            <CheckCircle2 size={20} color="#06B6D4" />
+          </div>
+          <div className="dash-kpi-body">
+            <div className="dash-kpi-val">{loading ? '—' : pushedCount.toLocaleString()}</div>
+            <div className="dash-kpi-label">Pushed to CRM</div>
           </div>
         </div>
       </div>
 
-      {/* Charts Row 1 */}
-      <div className="dashboard-charts">
-        {/* Lead Trend Chart */}
-        <div className="chart-card">
-          <div className="chart-card-header">
-            <div>
-              <div className="chart-card-title">Lead Trend</div>
-              <div className="chart-card-subtitle">Last 30 days</div>
+      {/* ── Qualification Funnel ── */}
+      <div className="dash-section-title">
+        <Target size={15} /> Cold Lead Qualification Funnel
+        <button className="dash-refresh-btn" onClick={loadAll} disabled={loading}>
+          <RefreshCw size={12} className={loading ? 'spin' : ''} />
+        </button>
+      </div>
+      <div className="dash-funnel-strip">
+        {['raw', 'targeted', 'contacted', 'engaged', 'warm', 'pushed'].map((key, i, arr) => {
+          const cfg = STAGE_CONFIG[key];
+          const count = getStageCount(key);
+          const pct = total > 0 ? ((count / total) * 100).toFixed(1) : 0;
+          return (
+            <div key={key} className="dash-funnel-item" onClick={() => navigate('/qualify')}>
+              <div className="dash-funnel-icon">{cfg.icon}</div>
+              <div className="dash-funnel-count" style={{ color: cfg.color }}>
+                {loading ? '—' : count.toLocaleString()}
+              </div>
+              <div className="dash-funnel-label">{cfg.label}</div>
+              <div className="dash-funnel-pct">{pct}%</div>
+              <div className="dash-funnel-bar-wrap">
+                <div className="dash-funnel-bar" style={{ height: `${Math.max(4, pct)}%`, background: cfg.color }} />
+              </div>
+              {i < arr.length - 1 && <div className="dash-funnel-arrow"><ArrowRight size={14} color="#334155" /></div>}
             </div>
-          </div>
-          <ResponsiveContainer width="100%" height={240}>
-            <AreaChart data={LEAD_TREND}>
-              <defs>
-                <linearGradient id="gradLeads" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#10B981" stopOpacity={0.15}/>
-                  <stop offset="95%" stopColor="#10B981" stopOpacity={0}/>
-                </linearGradient>
-                <linearGradient id="gradQualified" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#006853" stopOpacity={0.15}/>
-                  <stop offset="95%" stopColor="#006853" stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
-              <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#94A3B8' }} />
-              <YAxis tick={{ fontSize: 11, fill: '#94A3B8' }} />
-              <Tooltip
-                contentStyle={{
-                  background: '#fff',
-                  border: '1px solid #E2E8F0',
-                  borderRadius: '8px',
-                  fontSize: '13px'
-                }}
-              />
-              <Area type="monotone" dataKey="leads" stroke="#10B981" strokeWidth={2} fill="url(#gradLeads)" name="All Leads" />
-              <Area type="monotone" dataKey="qualified" stroke="#006853" strokeWidth={2} fill="url(#gradQualified)" name="Qualified" />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Product Interest Donut */}
-        <div className="chart-card">
-          <div className="chart-card-header">
-            <div>
-              <div className="chart-card-title">By Product</div>
-              <div className="chart-card-subtitle">Lead interest distribution</div>
-            </div>
-          </div>
-          <ResponsiveContainer width="100%" height={240}>
-            <PieChart>
-              <Pie
-                data={LEADS_BY_PRODUCT}
-                cx="50%"
-                cy="50%"
-                innerRadius={60}
-                outerRadius={90}
-                paddingAngle={3}
-                dataKey="count"
-                nameKey="product"
-              >
-                {LEADS_BY_PRODUCT.map((entry, i) => (
-                  <Cell key={i} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip
-                contentStyle={{
-                  background: '#fff',
-                  border: '1px solid #E2E8F0',
-                  borderRadius: '8px',
-                  fontSize: '13px'
-                }}
-              />
-            </PieChart>
-          </ResponsiveContainer>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center' }}>
-            {LEADS_BY_PRODUCT.map((p, i) => (
-              <span key={i} style={{
-                display: 'flex', alignItems: 'center', gap: '4px',
-                fontSize: '11px', color: '#64748B'
-              }}>
-                <span style={{
-                  width: 8, height: 8, borderRadius: '50%',
-                  background: p.color, display: 'inline-block'
-                }} />
-                {p.product}
-              </span>
-            ))}
-          </div>
-        </div>
+          );
+        })}
       </div>
 
-      {/* Charts Row 2 */}
-      <div className="dashboard-charts-row">
-        {/* Leads by Source */}
-        <div className="chart-card">
-          <div className="chart-card-header">
-            <div>
-              <div className="chart-card-title">Leads by Source</div>
-              <div className="chart-card-subtitle">All channels</div>
-            </div>
-          </div>
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={LEADS_BY_SOURCE} barGap={4}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
-              <XAxis dataKey="source" tick={{ fontSize: 11, fill: '#94A3B8' }} />
-              <YAxis tick={{ fontSize: 11, fill: '#94A3B8' }} />
-              <Tooltip
-                contentStyle={{
-                  background: '#fff',
-                  border: '1px solid #E2E8F0',
-                  borderRadius: '8px',
-                  fontSize: '13px'
-                }}
-              />
-              <Bar dataKey="count" fill="#10B981" radius={[4, 4, 0, 0]} name="Total" />
-              <Bar dataKey="qualified" fill="#006853" radius={[4, 4, 0, 0]} name="Qualified" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+      {/* ── Middle Row ── */}
+      <div className="dash-mid-row">
 
-        {/* Conversion Funnel */}
-        <div className="chart-card">
-          <div className="chart-card-header">
-            <div>
-              <div className="chart-card-title">Conversion Funnel</div>
-              <div className="chart-card-subtitle">Lead → Won pipeline</div>
-            </div>
+        {/* Top Industries */}
+        <div className="dash-card">
+          <div className="dash-card-header">
+            <BarChart3 size={14} /> Top Industries
           </div>
-          <div className="funnel-container">
-            {FUNNEL_DATA.map((stage, i) => (
-              <div key={i} className="funnel-stage">
-                <span className="funnel-label">{stage.stage}</span>
-                <div className="funnel-bar-wrap">
-                  <div
-                    className="funnel-bar"
-                    style={{
-                      width: `${(stage.count / FUNNEL_DATA[0].count) * 100}%`,
-                      background: stage.color,
-                    }}
-                  >
-                    {(stage.count / FUNNEL_DATA[0].count) * 100 > 15 && (
-                      <span>{stage.count}</span>
-                    )}
-                  </div>
+          <div className="dash-industries">
+            {topIndustries.map(({ industry, count }) => (
+              <div key={industry} className="dash-ind-row">
+                <span className="dash-ind-label" title={industry}>{industry?.length > 22 ? industry.slice(0, 20) + '…' : industry}</span>
+                <div className="dash-ind-bar-wrap">
+                  <div className="dash-ind-bar" style={{ width: `${(count / (topIndustries[0]?.count || 1)) * 100}%` }} />
                 </div>
-                <span className="funnel-count">{stage.count}</span>
+                <span className="dash-ind-count">{count.toLocaleString()}</span>
               </div>
             ))}
           </div>
         </div>
+
+        {/* Quick Actions */}
+        <div className="dash-card">
+          <div className="dash-card-header">
+            <Sparkles size={14} /> Quick Actions
+          </div>
+          <div className="dash-quick-actions">
+            <button className="dash-qa-btn" onClick={() => navigate('/qualify')}>
+              <div className="dash-qa-icon" style={{ background: 'rgba(16,185,129,0.12)' }}>
+                <Target size={18} color="#10B981" />
+              </div>
+              <div>
+                <div className="dash-qa-title">Qualification Tracker</div>
+                <div className="dash-qa-sub">{targetedCount.toLocaleString()} targeted — ready to contact</div>
+              </div>
+              <ArrowRight size={14} color="#475569" />
+            </button>
+            <button className="dash-qa-btn" onClick={() => navigate('/manual-enrich')}>
+              <div className="dash-qa-icon" style={{ background: 'rgba(99,102,241,0.12)' }}>
+                <ClipboardEdit size={18} color="#6366F1" />
+              </div>
+              <div>
+                <div className="dash-qa-title">Manual Enrichment</div>
+                <div className="dash-qa-sub">Update emails, phones & LinkedIn</div>
+              </div>
+              <ArrowRight size={14} color="#475569" />
+            </button>
+            <button className="dash-qa-btn" onClick={() => navigate('/enrich')}>
+              <div className="dash-qa-icon" style={{ background: 'rgba(245,158,11,0.12)' }}>
+                <Wand2 size={18} color="#F59E0B" />
+              </div>
+              <div>
+                <div className="dash-qa-title">AI Enrichment</div>
+                <div className="dash-qa-sub">Auto-find missing contact data</div>
+              </div>
+              <ArrowRight size={14} color="#475569" />
+            </button>
+            <button className="dash-qa-btn" onClick={() => navigate('/import')}>
+              <div className="dash-qa-icon" style={{ background: 'rgba(59,130,246,0.12)' }}>
+                <Upload size={18} color="#3B82F6" />
+              </div>
+              <div>
+                <div className="dash-qa-title">Smart Import</div>
+                <div className="dash-qa-sub">Add new leads from any source</div>
+              </div>
+              <ArrowRight size={14} color="#475569" />
+            </button>
+            <a
+              href="https://smartcrm-hans.vercel.app"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="dash-qa-btn dash-qa-crm"
+            >
+              <div className="dash-qa-icon" style={{ background: 'rgba(6,182,212,0.12)' }}>
+                <ExternalLink size={18} color="#06B6D4" />
+              </div>
+              <div>
+                <div className="dash-qa-title">Open SmartCRM</div>
+                <div className="dash-qa-sub">{warmCount} warm leads ready to hand off</div>
+              </div>
+              <ArrowRight size={14} color="#06B6D4" />
+            </a>
+          </div>
+        </div>
       </div>
 
-      {/* Recent Hot Leads */}
-      <div className="recent-leads-card">
-        <div className="recent-leads-header">
-          <span className="recent-leads-title">🔥 Recent Hot Leads</span>
-          <button className="btn btn-ghost btn-sm" onClick={() => navigate('/leads')}>View All →</button>
-        </div>
-        <table className="recent-leads-table">
-          <thead>
-            <tr>
-              <th>Lead</th>
-              <th>Product Interest</th>
-              <th>Score</th>
-              <th>Source</th>
-              <th>Status</th>
-              <th>Owner</th>
-            </tr>
-          </thead>
-          <tbody>
-            {hotLeads.map(lead => (
-              <tr key={lead.id} onClick={() => navigate(`/leads/${lead.id}`)}>
-                <td>
-                  <div className="lead-name-cell">
-                    <div className="avatar" style={{ background: `hsl(${lead.name.charCodeAt(0) * 7 % 360}, 55%, 50%)` }}>
-                      {lead.name.split(' ').map(n => n[0]).join('')}
-                    </div>
-                    <div>
-                      <div className="lead-name-text">{lead.name}</div>
-                      <div className="lead-company-text">{lead.company}</div>
-                    </div>
-                  </div>
-                </td>
-                <td><span className="badge badge-primary">{lead.product}</span></td>
-                <td><span className={`badge badge-${lead.band.toLowerCase()}`}>{lead.score} — {lead.band}</span></td>
-                <td><span className="source-badge">{lead.source}</span></td>
-                <td><span className="badge badge-neutral">{lead.status}</span></td>
-                <td style={{ fontSize: '13px', color: '#64748B' }}>{lead.assignedName}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      {/* ── Data Quality Index ── */}
+      <div className="dash-section-title">
+        <Activity size={15} /> Data Quality Index
       </div>
+      <DQSummaryPanel stats={dqStats} />
+
     </div>
   );
 }

@@ -188,3 +188,23 @@
   width: 18px;
   height: 18px;
 }
+
+/* ── CRM Handoff Link ── */
+.sidebar-crm-link {
+  color: #06B6D4 !important;
+  border: 1px solid rgba(6,182,212,0.25);
+  margin-top: 2px;
+}
+.sidebar-crm-link:hover {
+  background: rgba(6,182,212,0.1) !important;
+  border-color: rgba(6,182,212,0.5);
+  color: #22D3EE !important;
+}
+.sidebar-link-badge {
+  background: var(--primary);
+}
+/* Override NEW badge color to green */
+.sidebar-link[href="/qualify"] .sidebar-link-badge,
+a.sidebar-link.active .sidebar-link-badge {
+  background: #10B981;
+}
