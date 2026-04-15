@@ -4,11 +4,13 @@ import {
   MapPin, Building2, User, Tag, Globe, Database, Clock,
   ChevronLeft, ChevronRight, RefreshCw, CheckCircle, AlertCircle,
   ClipboardList, Loader2, Star, Plus, Trash2, Filter,
+  Zap, TrendingUp, Brain, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../auth/AuthContext';
 import { INDUSTRY_COLORS, INDUSTRY_ICONS, INDUSTRY_SUMMARY } from '../data/realContacts';
 import { DQBadge } from '../components/DQBadge';
+import { DQGapPanel, DQSmartQueueBanner } from '../components/DQGapPanel';
 import { computeDQScore } from '../lib/dataQuality';
 import './ManualEnrich.css';
 
@@ -56,6 +58,10 @@ export default function ManualEnrich() {
   const [page, setPage] = useState(1);
   const debounceRef = useRef(null);
 
+  // Smart Queue / Gap Analysis  
+  const [smartQueue, setSmartQueue] = useState(false); // sort by lowest DQ score
+  const [gapContactId, setGapContactId] = useState(null); // contact whose gap panel is open
+
   // Data
   const [contacts, setContacts] = useState([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -95,7 +101,7 @@ export default function ManualEnrich() {
   // Load contacts
   useEffect(() => {
     loadContacts();
-  }, [debouncedSearch, industryFilter, missingFilter, page]);
+  }, [debouncedSearch, industryFilter, missingFilter, page, smartQueue]);
 
   const loadContacts = async () => {
     setLoading(true);
@@ -111,9 +117,14 @@ export default function ManualEnrich() {
     if (missingFilter === 'email') query = query.or('email.is.null,email.not.ilike.%@%');
     else if (missingFilter === 'phone') query = query.or('phone.is.null,phone.eq.');
     else if (missingFilter === 'linkedin') query = query.or('linkedin.is.null,linkedin.eq.');
+    else if (missingFilter === 'incomplete') query = query.lt('data_quality_score', 100);
 
     const from = (page - 1) * PER_PAGE;
-    query = query.range(from, from + PER_PAGE - 1).order('company', { ascending: true });
+    if (smartQueue) {
+      query = query.range(from, from + PER_PAGE - 1).order('data_quality_score', { ascending: true });
+    } else {
+      query = query.range(from, from + PER_PAGE - 1).order('company', { ascending: true });
+    }
 
     const { data, count, error } = await query;
     if (!error) {
@@ -383,8 +394,17 @@ export default function ManualEnrich() {
             <option value="email">Missing Email</option>
             <option value="phone">Missing Phone</option>
             <option value="linkedin">Missing LinkedIn</option>
+            <option value="incomplete">Score &lt; 100</option>
           </select>
-          <button className="btn btn-ghost btn-sm" onClick={() => { setSearch(''); setIndustryFilter(''); setMissingFilter(''); setPage(1); }}>
+          {/* Smart Queue Toggle */}
+          <button
+            className={`btn btn-sm ${smartQueue ? 'btn-primary' : 'btn-ghost'}`}
+            onClick={() => { setSmartQueue(q => !q); setPage(1); }}
+            title={smartQueue ? 'Showing lowest-score contacts first (Smart Queue ON)' : 'Enable Smart Queue — lowest scores first'}
+          >
+            <Brain size={12}/> {smartQueue ? 'Smart Queue ON' : 'Smart Queue'}
+          </button>
+          <button className="btn btn-ghost btn-sm" onClick={() => { setSearch(''); setIndustryFilter(''); setMissingFilter(''); setSmartQueue(false); setPage(1); }}>
             <RefreshCw size={12}/> Reset
           </button>
         </div>
@@ -395,8 +415,19 @@ export default function ManualEnrich() {
         <span className="me-stat"><Database size={12}/> <strong>{totalCount.toLocaleString()}</strong> contacts found</span>
         <span className="me-stat-divider"/>
         <span className="me-stat"><Edit3 size={12}/> <strong>{auditLog.length}</strong> edits this session</span>
+        {smartQueue && (
+          <><span className="me-stat-divider"/>
+          <span className="me-stat" style={{ color: '#8B5CF6', fontWeight: 700 }}>
+            <Zap size={11}/> Smart Queue — lowest scores first
+          </span></>
+        )}
         {loading && <><span className="me-stat-divider"/><span className="me-stat"><Loader2 size={12} className="spin"/> Loading...</span></>}
       </div>
+
+      {/* Smart Queue Gap Banner — shows field-level stats for this page */}
+      {smartQueue && contacts.length > 0 && (
+        <DQSmartQueueBanner contacts={contacts} />
+      )}
 
       {/* Audit Log Panel */}
       {showAudit && (
@@ -440,10 +471,11 @@ export default function ManualEnrich() {
 
       {/* Table */}
       <div className="me-table-wrap">
-        <table className="me-table">
+        <table className="me-table" style={{ minWidth: 960 }}>
           <thead>
             <tr>
               <th>DQ</th>
+              <th>Gap</th>
               <th>Industry</th>
               <th>Name</th>
               <th>Company</th>
@@ -471,8 +503,23 @@ export default function ManualEnrich() {
               const hasEmail = c.email && c.email.includes('@');
               const hasPhone = c.phone && c.phone.length > 4;
               return (
-                <tr key={c.id} className={`me-row ${editingCell?.id === c.id ? 'editing' : ''}`}>
+                <>
+                  <tr key={c.id} className={`me-row ${editingCell?.id === c.id ? 'editing' : ''}`}>
                   <td><DQBadge score={c.data_quality_score} contact={c} size="sm" /></td>
+                  {/* Gap Analysis column */}
+                  <td>
+                    <button
+                      className={`me-gap-toggle ${gapContactId === c.id ? 'active' : ''}`}
+                      onClick={() => setGapContactId(gapContactId === c.id ? null : c.id)}
+                      title="Show gap analysis — what to fill to reach 100"
+                    >
+                      <Zap size={11} />
+                      {100 - (c.data_quality_score || 0) > 0
+                        ? <span className="me-gap-pts">+{100 - (c.data_quality_score || 0)}</span>
+                        : <span className="me-gap-full">✓</span>
+                      }
+                    </button>
+                  </td>
                   <td>
                     <span className="me-ind-badge" style={{ background: `${color}18`, color }}>
                       <span>{INDUSTRY_ICONS[c.industry] || '📁'}</span>
@@ -518,6 +565,21 @@ export default function ManualEnrich() {
                     </div>
                   </td>
                 </tr>
+                {/* Gap Analysis Slide-out Panel */}
+                {gapContactId === c.id && (
+                  <tr className="me-gap-row">
+                    <td colSpan={11} className="me-gap-cell">
+                      <DQGapPanel
+                        contact={c}
+                        onApply={(field, value) => {
+                          openEditModal(c);
+                          setEditForm(prev => ({ ...prev, [field]: value }));
+                        }}
+                      />
+                    </td>
+                  </tr>
+                )}
+                </>
               );
             })}
           </tbody>

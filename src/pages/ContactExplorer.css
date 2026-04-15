@@ -56,8 +56,8 @@
 .contact-table-wrap { background: var(--surface-card); border: var(--border); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-sm); }
 .contact-table-header { display: flex; align-items: center; justify-content: space-between; padding: var(--space-3) var(--space-4); border-bottom: var(--border); }
 .contact-table-header h3 { font-family: var(--font-heading); font-size: var(--text-sm); font-weight: 700; margin: 0; }
-.contact-table-scroll { max-height: 480px; overflow: auto; }
-.contact-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.contact-table-scroll { overflow-x: auto; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.contact-table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 900px; }
 .contact-table th { padding: 8px 10px; font-size: 9px; font-weight: 700; color: var(--neutral-400); text-transform: uppercase; letter-spacing: 0.04em; text-align: left; background: var(--neutral-50); border-bottom: var(--border); position: sticky; top: 0; z-index: 5; white-space: nowrap; }
 .contact-table td { padding: 7px 10px; border-bottom: 1px solid var(--neutral-100); color: var(--tertiary); }
 .contact-table tbody tr { transition: background var(--transition-fast); }

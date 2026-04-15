@@ -197,9 +197,26 @@ input, select, textarea {
 .app-content {
   flex: 1;
   overflow-y: auto;
-  overflow-x: hidden;
+  overflow-x: auto;
   padding: var(--space-6);
   background: var(--neutral-bg);
+}
+
+/* Wide table horizontal scroll wrapper */
+.table-scroll-x {
+  overflow-x: auto;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+/* Sticky actions column in any table */
+.col-sticky-right {
+  position: sticky;
+  right: 0;
+  background: inherit;
+  z-index: 2;
+  box-shadow: -4px 0 8px rgba(0,0,0,0.08);
 }
 
 /* ---- Utility Classes ---- */

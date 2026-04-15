@@ -207,6 +207,8 @@
   border: 1px solid var(--border);
   border-radius: 14px;
   overflow: hidden;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .qt-table-header {
@@ -241,6 +243,7 @@
   width: 100%;
   border-collapse: collapse;
   font-size: 12px;
+  min-width: 880px;
 }
 
 .qt-table th {
