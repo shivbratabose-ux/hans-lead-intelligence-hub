@@ -442,12 +442,8 @@ JSON only, no other text.`;
 
   return (
     <div className="enrich-page animate-in">
-      {/* Header */}
+      {/* Header — title shown in topbar, keep only action buttons */}
       <div className="enrich-header">
-        <div>
-          <h2 className="page-title">AI Enrichment Engine</h2>
-          <p className="page-subtitle">Find missing emails & phone numbers using AI + verification APIs</p>
-        </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="btn btn-ghost" onClick={() => setShowSettings(!showSettings)}>
             <Key size={14} /> API Keys

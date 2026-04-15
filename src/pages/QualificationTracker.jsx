@@ -207,12 +207,8 @@ export default function QualificationTracker() {
         </div>
       )}
 
-      {/* Header */}
+      {/* Header — title shown in topbar, keep only the CRM action */}
       <div className="qt-header">
-        <div>
-          <h2 className="page-title">Qualification Tracker</h2>
-          <p className="page-subtitle">Move contacts from Cold → Warm, then hand off to CRM</p>
-        </div>
         <div className="qt-header-actions">
           <a href={CRM_URL} target="_blank" rel="noopener noreferrer" className="btn btn-primary">
             <ExternalLink size={14} /> Open SmartCRM

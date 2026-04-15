@@ -18,82 +18,85 @@ const STAGE_CONFIG = {
   pushed:    { label: 'In CRM',    icon: '✅', color: '#06B6D4', bg: 'rgba(6,182,212,0.12)'   },
 };
 
+const STAGE_KEYS = ['raw', 'targeted', 'contacted', 'engaged', 'warm', 'pushed'];
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const [stats, setStats] = useState(null);
-  const [stages, setStages] = useState([]);
+  const [stageCounts, setStageCounts] = useState({});
   const [topIndustries, setTopIndustries] = useState([]);
   const [dqStats, setDqStats] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [lastRefresh, setLastRefresh] = useState(new Date());
 
   useEffect(() => { loadAll(); }, []);
 
   const loadAll = async () => {
     setLoading(true);
-    const [totals, stageCounts, industries, dq] = await Promise.all([
-      // Total + email/phone completeness
-      supabase.from('contacts').select('id, email, phone', { count: 'exact', head: false })
-        .limit(1).then(async () => {
-          const { count } = await supabase.from('contacts').select('*', { count: 'exact', head: true });
-          const { count: emailCount } = await supabase.from('contacts').select('*', { count: 'exact', head: true }).not('email', 'is', null).ilike('email', '%@%');
-          const { count: phoneCount } = await supabase.from('contacts').select('*', { count: 'exact', head: true }).not('phone', 'is', null).neq('phone', '');
-          return { total: count || 0, withEmail: emailCount || 0, withPhone: phoneCount || 0 };
-        }),
+    try {
+      // 1. Total + email/phone counts (3 parallel HEAD queries — very fast)
+      const [totalRes, emailRes, phoneRes] = await Promise.all([
+        supabase.from('contacts').select('*', { count: 'exact', head: true }),
+        supabase.from('contacts').select('*', { count: 'exact', head: true })
+          .not('email', 'is', null).ilike('email', '%@%'),
+        supabase.from('contacts').select('*', { count: 'exact', head: true })
+          .not('phone', 'is', null).neq('phone', '').neq('phone', '??'),
+      ]);
+      setStats({
+        total:     totalRes.count   || 0,
+        withEmail: emailRes.count   || 0,
+        withPhone: phoneRes.count   || 0,
+      });
 
-      // Stage breakdown
-      supabase.rpc('get_stage_counts').then(r => r.data)
-        .catch(async () => {
-          const { data } = await supabase.from('contacts').select('qual_stage');
-          if (!data) return [];
-          const map = {};
-          data.forEach(r => { map[r.qual_stage] = (map[r.qual_stage] || 0) + 1; });
-          return Object.entries(map).map(([qual_stage, count]) => ({ qual_stage, count }));
-        }),
+      // 2. Stage counts — one HEAD query per stage (6 parallel) — bypasses broken RPC
+      const stageResults = await Promise.all(
+        STAGE_KEYS.map(key =>
+          supabase.from('contacts').select('*', { count: 'exact', head: true }).eq('qual_stage', key)
+        )
+      );
+      const counts = {};
+      STAGE_KEYS.forEach((key, i) => { counts[key] = stageResults[i].count || 0; });
+      setStageCounts(counts);
 
-      // Top 6 industries
-      supabase.from('contacts').select('industry').then(({ data }) => {
-        if (!data) return [];
+      // 3. Top 6 industries — stream all industry values and count client-side
+      const { data: indData } = await supabase.from('contacts').select('industry');
+      if (indData) {
         const map = {};
-        data.forEach(r => { if (r.industry) map[r.industry] = (map[r.industry] || 0) + 1; });
-        return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([industry, count]) => ({ industry, count }));
-      }),
+        indData.forEach(r => { if (r.industry) map[r.industry] = (map[r.industry] || 0) + 1; });
+        setTopIndustries(Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([industry, count]) => ({ industry, count })));
+      }
 
-      // DQ stats
-      supabase.from('contacts').select('data_quality_score').then(({ data }) => {
-        if (!data) return null;
-        const total = data.length;
-        const avg = Math.round(data.reduce((s, c) => s + (c.data_quality_score || 0), 0) / total);
-        return {
+      // 4. DQ stats — sample up to 5000 for speed
+      const { data: dqData } = await supabase
+        .from('contacts')
+        .select('data_quality_score, email, phone, linkedin')
+        .limit(5000);
+      if (dqData && dqData.length > 0) {
+        const total = dqData.length;
+        const avg = Math.round(dqData.reduce((s, c) => s + (c.data_quality_score || 0), 0) / total);
+        setDqStats({
           total,
           avg_score: avg,
-          grade_a: data.filter(c => (c.data_quality_score || 0) >= 80).length,
-          grade_b: data.filter(c => (c.data_quality_score || 0) >= 60 && (c.data_quality_score || 0) < 80).length,
-          grade_c: data.filter(c => (c.data_quality_score || 0) >= 40 && (c.data_quality_score || 0) < 60).length,
-          grade_d: data.filter(c => (c.data_quality_score || 0) >= 20 && (c.data_quality_score || 0) < 40).length,
-          grade_f: data.filter(c => (c.data_quality_score || 0) < 20).length,
-          has_email: data.length, has_phone: data.length, has_linkedin: 0,
-        };
-      }),
-    ]);
-
-    setStats(totals);
-    setStages(stageCounts || []);
-    setTopIndustries(industries);
-    setDqStats(dq);
-    setLastRefresh(new Date());
+          grade_a: dqData.filter(c => (c.data_quality_score || 0) >= 80).length,
+          grade_b: dqData.filter(c => (c.data_quality_score || 0) >= 60 && (c.data_quality_score || 0) < 80).length,
+          grade_c: dqData.filter(c => (c.data_quality_score || 0) >= 40 && (c.data_quality_score || 0) < 60).length,
+          grade_d: dqData.filter(c => (c.data_quality_score || 0) >= 20 && (c.data_quality_score || 0) < 40).length,
+          grade_f: dqData.filter(c => (c.data_quality_score || 0) < 20).length,
+          has_email:   dqData.filter(c => c.email && c.email.includes('@')).length,
+          has_phone:   dqData.filter(c => c.phone && c.phone.trim().length > 4).length,
+          has_linkedin: dqData.filter(c => c.linkedin && c.linkedin.includes('linkedin')).length,
+        });
+      }
+    } catch (err) {
+      console.error('Dashboard load error:', err);
+    }
     setLoading(false);
   };
 
-  const getStageCount = (key) => {
-    const s = stages.find(s => s.qual_stage === key);
-    return s ? Number(s.count) : 0;
-  };
-
-  const total = stats?.total || 0;
-  const warmCount = getStageCount('warm');
-  const targetedCount = getStageCount('targeted');
-  const pushedCount = getStageCount('pushed');
+  const getStage = (key) => stageCounts[key] || 0;
+  const total      = stats?.total || 0;
+  const warmCount  = getStage('warm');
+  const targetedCount = getStage('targeted');
+  const pushedCount   = getStage('pushed');
 
   return (
     <div className="dashboard animate-in">
@@ -132,7 +135,7 @@ export default function Dashboard() {
             <Flame size={20} color="#10B981" />
           </div>
           <div className="dash-kpi-body">
-            <div className="dash-kpi-val">{loading ? '—' : warmCount}</div>
+            <div className="dash-kpi-val">{loading ? '—' : warmCount.toLocaleString()}</div>
             <div className="dash-kpi-label">Warm — Ready for CRM</div>
           </div>
         </div>
@@ -155,9 +158,9 @@ export default function Dashboard() {
         </button>
       </div>
       <div className="dash-funnel-strip">
-        {['raw', 'targeted', 'contacted', 'engaged', 'warm', 'pushed'].map((key, i, arr) => {
+        {STAGE_KEYS.map((key, i, arr) => {
           const cfg = STAGE_CONFIG[key];
-          const count = getStageCount(key);
+          const count = getStage(key);
           const pct = total > 0 ? ((count / total) * 100).toFixed(1) : 0;
           return (
             <div key={key} className="dash-funnel-item" onClick={() => navigate('/qualify')}>
@@ -166,9 +169,9 @@ export default function Dashboard() {
                 {loading ? '—' : count.toLocaleString()}
               </div>
               <div className="dash-funnel-label">{cfg.label}</div>
-              <div className="dash-funnel-pct">{pct}%</div>
+              <div className="dash-funnel-pct">{loading ? '…' : `${pct}%`}</div>
               <div className="dash-funnel-bar-wrap">
-                <div className="dash-funnel-bar" style={{ height: `${Math.max(4, pct)}%`, background: cfg.color }} />
+                <div className="dash-funnel-bar" style={{ height: `${Math.max(4, Number(pct))}%`, background: cfg.color }} />
               </div>
               {i < arr.length - 1 && <div className="dash-funnel-arrow"><ArrowRight size={14} color="#334155" /></div>}
             </div>
@@ -219,7 +222,7 @@ export default function Dashboard() {
               </div>
               <div>
                 <div className="dash-qa-title">Manual Enrichment</div>
-                <div className="dash-qa-sub">Update emails, phones & LinkedIn</div>
+                <div className="dash-qa-sub">Update emails, phones &amp; LinkedIn</div>
               </div>
               <ArrowRight size={14} color="#475569" />
             </button>

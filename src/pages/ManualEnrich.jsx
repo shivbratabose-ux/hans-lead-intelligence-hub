@@ -353,12 +353,8 @@ export default function ManualEnrich() {
         </div>
       )}
 
-      {/* Header */}
+      {/* Header — title shown in topbar, so only actions row here */}
       <div className="me-header">
-        <div>
-          <h2 className="page-title">Manual Enrichment</h2>
-          <p className="page-subtitle">Search any contact and update their data — saved instantly to the database</p>
-        </div>
         <div className="me-header-actions">
           <button className="btn btn-ghost" onClick={() => setShowAudit(!showAudit)}>
             <Clock size={14}/> Audit Log {auditLog.length > 0 && <span className="me-audit-count">{auditLog.length}</span>}
@@ -530,7 +526,7 @@ export default function ManualEnrich() {
                     {renderInlineCell(c, 'name', v => v || <span className="me-empty">Unnamed</span>)}
                   </td>
                   <td className="me-company-cell">
-                    <span className="me-company">{c.company || <span className="me-empty">—</span>}</span>
+                    <span className="me-company">{c.company && c.company !== '??' ? c.company : <span className="me-empty">—</span>}</span>
                   </td>
                   <td className="me-title-cell">
                     {renderInlineCell(c, 'title', v => v || <span className="me-empty">—</span>)}

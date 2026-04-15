@@ -326,14 +326,7 @@ JSON only.`;
 
   return (
     <div className="import-page animate-in">
-      {/* Header */}
-      <div className="import-header">
-        <div>
-          <h2 className="page-title">Smart Import</h2>
-          <p className="page-subtitle">Add leads in any format — AI auto-maps & deduplicates</p>
-        </div>
-      </div>
-
+      {/* Header title shown in topbar; Step Indicator below */}
       {/* Step Indicator */}
       <div className="import-steps">
         {[

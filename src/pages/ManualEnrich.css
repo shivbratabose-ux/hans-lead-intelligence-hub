@@ -10,10 +10,9 @@
 /* ===== HEADER ===== */
 .me-header {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
+  justify-content: flex-end;
+  align-items: center;
   gap: 16px;
-  flex-wrap: wrap;
 }
 
 .me-header-actions {
@@ -331,14 +330,36 @@
 }
 
 /* Cell types */
-.me-name-cell { min-width: 120px; }
-.me-company-cell { min-width: 130px; }
-.me-company { font-weight: 600; color: var(--text); }
-.me-title-cell { min-width: 130px; color: #64748B; }
-.me-email-cell { min-width: 160px; }
+.me-name-cell { min-width: 130px; max-width: 170px; }
+.me-company-cell { min-width: 130px; max-width: 170px; }
+.me-company {
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+  max-width: 160px;
+}
+.me-title-cell {
+  min-width: 130px;
+  max-width: 160px;
+  color: #64748B;
+}
+/* Force title and name cells not to wrap */
+.me-title-cell .me-editable-cell,
+.me-title-cell .me-cell-value,
+.me-name-cell .me-cell-value {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 150px;
+  display: block;
+}
+.me-email-cell { min-width: 170px; max-width: 210px; }
 .me-phone-cell { min-width: 120px; }
-.me-source-cell { color: #64748B; }
-.me-source { font-size: 11px; }
+.me-source-cell { color: #64748B; max-width: 130px; }
+.me-source { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
 
 .me-link-email, .me-link-phone {
   color: #10B981;
