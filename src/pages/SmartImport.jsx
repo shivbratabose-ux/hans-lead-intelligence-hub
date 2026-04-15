@@ -1,9 +1,10 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   Upload, FileSpreadsheet, Clipboard, Sparkles, AlertTriangle, CheckCircle, XCircle,
   Loader2, Download, Plus, Merge, ChevronDown, ChevronUp, Mail, Phone, Info, ArrowRight, Trash2, RefreshCw
 } from 'lucide-react';
-import { ALL_CONTACTS, INDUSTRY_SUMMARY, INDUSTRY_COLORS, INDUSTRY_ICONS } from '../data/realContacts';
+import { INDUSTRY_SUMMARY, INDUSTRY_COLORS, INDUSTRY_ICONS } from '../data/realContacts';
+import { supabase } from '../lib/supabase';
 import './SmartImport.css';
 
 const APP_FIELDS = ['name','company','title','email','phone','location','industry','product','source','status','country','linkedin'];
@@ -76,17 +77,47 @@ export default function SmartImport() {
   const [mergeSelections, setMergeSelections] = useState({});
   const [importResult, setImportResult] = useState(null);
 
-  // Build email/phone index from existing contacts
-  const existingIndex = useMemo(() => {
+  // Build email/phone index from existing contacts in Supabase
+  const [existingIndex, setExistingIndex] = useState({ emailIdx: {}, phoneIdx: {} });
+  const [indexLoading, setIndexLoading] = useState(false);
+
+  // Load dedup index from Supabase when step changes to 'mapping' (before review)
+  useEffect(() => {
+    if (step === 'mapping' && Object.keys(existingIndex.emailIdx).length === 0) {
+      loadExistingIndex();
+    }
+  }, [step]);
+
+  const loadExistingIndex = async () => {
+    setIndexLoading(true);
     const emailIdx = {}, phoneIdx = {};
-    ALL_CONTACTS.forEach((c, i) => {
-      const email = (c.email || '').toLowerCase().trim();
-      const phone = (c.phone || '').replace(/[\s\-\(\)]/g, '');
-      if (email && email.includes('@')) emailIdx[email] = c;
-      if (phone && phone.length > 6) phoneIdx[phone] = c;
-    });
-    return { emailIdx, phoneIdx };
-  }, []);
+    let from = 0;
+    const batchSize = 1000;
+    let hasMore = true;
+
+    while (hasMore) {
+      const { data } = await supabase
+        .from('contacts')
+        .select('name, company, email, phone, title, industry, product, source, status, country, linkedin, location')
+        .range(from, from + batchSize - 1);
+
+      if (data && data.length > 0) {
+        data.forEach(c => {
+          const email = (c.email || '').toLowerCase().trim();
+          const phone = (c.phone || '').replace(/[\s\-\(\)]/g, '');
+          if (email && email.includes('@')) emailIdx[email] = c;
+          if (phone && phone.length > 6) phoneIdx[phone] = c;
+        });
+        from += batchSize;
+        hasMore = data.length === batchSize;
+      } else {
+        hasMore = false;
+      }
+    }
+
+    setExistingIndex({ emailIdx, phoneIdx });
+    setIndexLoading(false);
+  };
 
   // Handle file upload
   const handleFileUpload = useCallback((e) => {
