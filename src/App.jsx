@@ -17,6 +17,7 @@ import SmartImport from './pages/SmartImport';
 import Events from './pages/Events';
 import Reports from './pages/Reports';
 import Admin from './pages/Admin';
+import ManualEnrich from './pages/ManualEnrich';
 
 const PAGE_TITLES = {
   '/': { title: 'Dashboard', subtitle: 'Lead Intelligence Hub — Executive Overview' },
@@ -29,6 +30,7 @@ const PAGE_TITLES = {
   '/data': { title: 'Lead Database', subtitle: 'Enriched data table & webhook exports' },
   '/contacts': { title: 'Contact Explorer', subtitle: '24,498 real contacts structured by industry' },
   '/enrich': { title: 'AI Enrichment', subtitle: 'Find missing emails & phones with AI + verification' },
+  '/manual-enrich': { title: 'Manual Enrichment', subtitle: 'Search, edit and update any contact directly in the database' },
   '/import': { title: 'Smart Import', subtitle: 'Add leads in any format — AI auto-maps & deduplicates' },
   '/events': { title: 'Events', subtitle: 'Campaign and event management' },
   '/reports': { title: 'Reports', subtitle: 'Analytics and performance insights' },
@@ -64,6 +66,7 @@ function AppContent() {
             <Route path="/data" element={<LeadDatabase />} />
             <Route path="/contacts" element={<ContactExplorer />} />
             <Route path="/enrich" element={<EnrichmentEngine />} />
+            <Route path="/manual-enrich" element={<ManualEnrich />} />
             <Route path="/import" element={<SmartImport />} />
             <Route path="/events" element={<Events />} />
             <Route path="/reports" element={<Reports />} />

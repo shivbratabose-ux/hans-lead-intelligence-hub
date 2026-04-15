@@ -16,6 +16,7 @@ import {
   Users,
   Wand2,
   FileUp,
+  ClipboardEdit,
 } from 'lucide-react';
 import './Sidebar.css';
 
@@ -32,6 +33,7 @@ const NAV_ITEMS = [
   { path: '/data', label: 'Lead Database', icon: TableProperties },
   { path: '/contacts', label: 'Contact Explorer', icon: Users, badge: '24.5K' },
   { path: '/enrich', label: 'AI Enrichment', icon: Wand2, badge: 'AI' },
+  { path: '/manual-enrich', label: 'Manual Enrich', icon: ClipboardEdit },
   { path: '/import', label: 'Smart Import', icon: FileUp },
   { section: 'Manage' },
   { path: '/events', label: 'Events', icon: CalendarDays },
