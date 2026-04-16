@@ -373,7 +373,7 @@ export default function Admin() {
               {resetPwMsg.type === 'success' ? '✓' : '✗'} {resetPwMsg.text}
             </div>
           )}
-          <table className="inbox-table">
+          <table className="admin-table">
             <thead>
               <tr><th>User</th><th>Email</th><th>Role</th><th>Status</th><th>Region</th><th>Leads</th><th>Qualified</th><th>Conv. %</th><th>Actions</th></tr>
             </thead>

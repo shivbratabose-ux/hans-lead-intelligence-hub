@@ -280,6 +280,36 @@
 }
 .user-row:hover .user-actions { opacity: 1; }
 
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.admin-table th {
+  padding: var(--space-4);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--neutral-400);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-align: left;
+  border-bottom: 2px solid var(--neutral-100);
+  white-space: nowrap;
+}
+.admin-table td {
+  padding: var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--tertiary);
+  border-bottom: 1px solid var(--neutral-100);
+  white-space: nowrap;
+}
+.admin-table tbody tr {
+  transition: background var(--transition-fast);
+  cursor: pointer;
+}
+.admin-table tbody tr:hover td {
+  background: var(--primary-ghost);
+}
+
 .user-editor-avatar-row {
   display: flex; align-items: center; gap: var(--space-4); margin-bottom: var(--space-5);
   padding-bottom: var(--space-4); border-bottom: 1px solid var(--neutral-100);
