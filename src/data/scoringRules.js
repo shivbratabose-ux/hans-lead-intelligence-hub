@@ -19,71 +19,7 @@ export const SCORE_THRESHOLDS = {
   cold: 0,
 };
 
-export const ROUTING_RULES = [
-  {
-    id: 'R001',
-    name: 'India Freight → Priya',
-    conditions: [
-      { field: 'product', operator: 'equals', value: 'iCAFFE' },
-      { field: 'location', operator: 'contains', value: 'India' },
-    ],
-    action: 'assign',
-    assignTo: 'U001',
-    assignName: 'Priya Mehta',
-    priority: 1,
-    active: true,
-  },
-  {
-    id: 'R002',
-    name: 'APAC/ME Airports → Amit',
-    conditions: [
-      { field: 'product', operator: 'in', value: ['WiseCCS', 'WiseDOX'] },
-      { field: 'location', operator: 'in', value: ['UAE', 'Singapore', 'Saudi Arabia', 'Oman'] },
-    ],
-    action: 'assign',
-    assignTo: 'U002',
-    assignName: 'Amit Desai',
-    priority: 2,
-    active: true,
-  },
-  {
-    id: 'R003',
-    name: 'GSA/Airlines → Kavita',
-    conditions: [
-      { field: 'product', operator: 'equals', value: 'WiseGSA' },
-    ],
-    action: 'assign',
-    assignTo: 'U003',
-    assignName: 'Kavita Singh',
-    priority: 3,
-    active: true,
-  },
-  {
-    id: 'R004',
-    name: 'Enterprise (5000+) → Manager Review',
-    conditions: [
-      { field: 'companySize', operator: 'equals', value: '5000+' },
-      { field: 'score', operator: 'gte', value: 80 },
-    ],
-    action: 'flag',
-    assignTo: 'U004',
-    assignName: 'Rajiv Khanna (Manager Review)',
-    priority: 0,
-    active: true,
-  },
-  {
-    id: 'R005',
-    name: 'AMS Product → Kavita',
-    conditions: [
-      { field: 'product', operator: 'equals', value: 'AMS' },
-    ],
-    action: 'assign',
-    assignTo: 'U003',
-    assignName: 'Kavita Singh',
-    priority: 4,
-    active: true,
-  },
-];
+export const ROUTING_RULES = [];
 
 export const INTEGRATIONS = [
   { id: 'I001', name: 'CRM (Salesforce)', type: 'CRM', status: 'connected', lastSync: '2 min ago', icon: 'database' },
