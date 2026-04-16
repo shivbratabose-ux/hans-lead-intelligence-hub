@@ -5,6 +5,14 @@ import './DataSources.css';
 
 export default function DataSources() {
   const [selectedSource, setSelectedSource] = useState(null);
+  const [importingStates, setImportingStates] = useState({});
+
+  const handleImport = (id) => {
+    setImportingStates(prev => ({ ...prev, [id]: 'loading' }));
+    setTimeout(() => {
+      setImportingStates(prev => ({ ...prev, [id]: 'success' }));
+    }, 800);
+  };
 
   if (selectedSource) {
     const src = DATA_SOURCES.find(s => s.id === selectedSource);
@@ -46,7 +54,16 @@ export default function DataSources() {
                     <td style={{ fontSize: 12, color: '#94A3B8' }}>{r.phone}</td>
                     <td style={{ fontSize: 12, color: '#94A3B8' }}>{r.location}</td>
                     <td><span className={`badge ${r.verified ? 'badge-success' : 'badge-warning'}`}>{r.verified ? '✓ Verified' : '? Unverified'}</span></td>
-                    <td><button className="btn btn-primary btn-sm">Import</button></td>
+                    <td>
+                      <button 
+                        className={`btn btn-sm ${importingStates[i] === 'success' ? 'btn-outline' : 'btn-primary'}`} 
+                        onClick={() => handleImport(i)}
+                        disabled={importingStates[i] === 'loading' || importingStates[i] === 'success'}
+                        style={importingStates[i] === 'success' ? { borderColor: '#10B981', color: '#10B981', background: 'transparent' } : {}}
+                      >
+                        {importingStates[i] === 'loading' ? 'Importing...' : importingStates[i] === 'success' ? 'Imported ✓' : 'Import'}
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
