@@ -102,7 +102,7 @@ export default function Dashboard() {
     <div className="dashboard animate-in">
 
       {/* ── KPI Strip ── */}
-      <div className="dash-kpi-strip">
+      <div className="dash-kpi-strip stagger">
         <div className="dash-kpi">
           <div className="dash-kpi-icon" style={{ background: 'rgba(16,185,129,0.12)' }}>
             <Users size={20} color="#10B981" />

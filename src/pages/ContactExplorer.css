@@ -3,7 +3,8 @@
 
 /* Top Stats Strip */
 .explorer-stats-strip { display: flex; gap: var(--space-3); margin-bottom: var(--space-5); flex-wrap: wrap; }
-.stat-card-mini { background: var(--surface-card); border: var(--border); border-radius: var(--radius-lg); padding: var(--space-3) var(--space-4); text-align: center; min-width: 110px; flex: 1; box-shadow: var(--shadow-xs); }
+.stat-card-mini { background: var(--surface-card); border: var(--border); border-radius: var(--radius-lg); padding: var(--space-3) var(--space-4); text-align: center; min-width: 110px; flex: 1; box-shadow: var(--shadow-xs); transition: transform 0.2s ease, box-shadow 0.2s ease; }
+.stat-card-mini:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
 .stat-card-mini-number { font-family: var(--font-heading); font-size: var(--text-xl); font-weight: 900; line-height: 1.1; }
 .stat-card-mini-label { font-size: 10px; color: var(--neutral-400); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.04em; }
 
@@ -27,7 +28,8 @@
 
 /* Analytics Row */
 .analytics-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-4); margin-bottom: var(--space-5); }
-.analytics-card { background: var(--surface-card); border: var(--border); border-radius: var(--radius-lg); padding: var(--space-4); box-shadow: var(--shadow-xs); }
+.analytics-card { background: var(--surface-card); border: var(--border); border-radius: var(--radius-lg); padding: var(--space-4); box-shadow: var(--shadow-xs); transition: transform 0.2s ease, box-shadow 0.2s ease; }
+.analytics-card:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); }
 .analytics-card-title { font-size: 10px; font-weight: 700; color: var(--neutral-400); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: var(--space-3); display: flex; align-items: center; gap: 6px; }
 .analytics-bar-list { display: flex; flex-direction: column; gap: 6px; }
 .analytics-bar-item { display: flex; align-items: center; gap: var(--space-2); }
@@ -62,6 +64,7 @@
 .contact-table td { padding: 7px 10px; border-bottom: 1px solid var(--neutral-100); color: var(--tertiary); }
 .contact-table tbody tr { transition: background var(--transition-fast); }
 .contact-table tbody tr:hover { background: rgba(16, 185, 129, 0.04); }
+.contact-table tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--primary); }
 .industry-badge { display: inline-flex; align-items: center; gap: 3px; padding: 1px 6px; border-radius: var(--radius-full); font-size: 9px; font-weight: 600; white-space: nowrap; }
 .contact-email { color: var(--primary-dark); font-size: 11px; }
 .contact-phone { color: var(--neutral-500); font-size: 11px; }

@@ -134,12 +134,17 @@
 .dq-summary-panel {
   display: flex;
   gap: 24px;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--surface-card);
+  border: 1px solid var(--border-color);
   border-radius: 14px;
   padding: 18px 22px;
   margin-bottom: 14px;
   flex-wrap: wrap;
+  transition: box-shadow 0.2s;
+}
+
+.dq-summary-panel:hover {
+  box-shadow: var(--shadow-md);
 }
 
 .dq-summary-left {
@@ -164,7 +169,7 @@
 
 .dq-ring-bg {
   fill: none;
-  stroke: rgba(255,255,255,0.06);
+  stroke: var(--neutral-200);
   stroke-width: 6;
 }
 
@@ -188,7 +193,7 @@
   font-size: 22px;
   font-weight: 800;
   line-height: 1;
-  color: var(--text);
+  color: var(--tertiary-dark);
 }
 
 .dq-ring-sub {
@@ -207,7 +212,7 @@
 .dq-summary-title {
   font-size: 14px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--tertiary-dark);
 }
 
 .dq-summary-subtitle {
@@ -276,7 +281,7 @@
 .dq-completeness-bar-wrap {
   flex: 1;
   height: 6px;
-  background: rgba(255,255,255,0.06);
+  background: var(--neutral-100);
   border-radius: 3px;
   overflow: hidden;
 }

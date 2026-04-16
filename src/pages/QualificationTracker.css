@@ -25,8 +25,8 @@
   display: flex;
   align-items: center;
   gap: 0;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--surface-card);
+  border: 1px solid var(--border-color);
   border-radius: 14px;
   padding: 12px 16px;
   overflow-x: auto;
@@ -71,7 +71,7 @@
 .qt-stage-label {
   font-size: 12px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--tertiary-dark);
 }
 
 .qt-stage-count {
@@ -126,10 +126,10 @@
 .qt-search {
   width: 100%;
   padding: 8px 10px 8px 32px;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--surface-card);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
-  color: var(--text);
+  color: var(--tertiary-dark);
   font-size: 12px;
   outline: none;
   transition: border-color 0.15s;
@@ -153,10 +153,10 @@
 
 .qt-filter-select {
   padding: 8px 10px;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--surface-card);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
-  color: var(--text);
+  color: var(--tertiary-dark);
   font-size: 12px;
   outline: none;
   cursor: pointer;
@@ -164,8 +164,8 @@
 }
 
 .qt-refresh-btn {
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--surface-card);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 8px 10px;
   cursor: pointer;
@@ -175,12 +175,12 @@
   transition: background 0.12s;
 }
 
-.qt-refresh-btn:hover { background: rgba(255,255,255,0.06); color: var(--text); }
+.qt-refresh-btn:hover { background: var(--surface-hover); color: var(--tertiary-dark); }
 
 .qt-view-toggle {
   display: flex;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--surface-card);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   overflow: hidden;
 }
@@ -197,14 +197,14 @@
 }
 
 .qt-view-toggle button.active {
-  background: rgba(255,255,255,0.08);
-  color: var(--text);
+  background: var(--neutral-100);
+  color: var(--tertiary-dark);
 }
 
 /* ── Table ──────────────────────────────────────────────── */
 .qt-table-wrap {
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--surface-card);
+  border: 1px solid var(--border-color);
   border-radius: 14px;
   overflow: hidden;
   overflow-x: auto;
@@ -216,13 +216,13 @@
   justify-content: space-between;
   align-items: center;
   padding: 12px 16px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .qt-table-stage-label {
   font-size: 14px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--tertiary-dark);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -254,15 +254,15 @@
   color: #64748B;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-color);
   background: rgba(255,255,255,0.02);
   white-space: nowrap;
 }
 
 .qt-table td {
   padding: 9px 12px;
-  border-bottom: 1px solid rgba(255,255,255,0.04);
-  color: var(--text);
+  border-bottom: 1px solid var(--neutral-100);
+  color: var(--tertiary-dark);
   vertical-align: middle;
 }
 
@@ -389,8 +389,8 @@
 
 .qt-page-btn {
   padding: 5px 9px;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--surface-card);
+  border: 1px solid var(--border-color);
   border-radius: 6px;
   color: #64748B;
   font-size: 12px;
@@ -401,7 +401,7 @@
   transition: all 0.1s;
 }
 
-.qt-page-btn:hover:not(:disabled) { background: rgba(255,255,255,0.06); color: var(--text); }
+.qt-page-btn:hover:not(:disabled) { background: var(--surface-hover); color: var(--tertiary-dark); }
 .qt-page-btn.active { background: var(--primary); border-color: var(--primary); color: white; }
 .qt-page-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
@@ -426,8 +426,8 @@
 }
 
 .qt-kanban-col {
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--surface-card);
+  border: 1px solid var(--border-color);
   border-radius: 12px;
   display: flex;
   flex-direction: column;
@@ -442,8 +442,8 @@
   padding: 10px 12px;
   font-size: 12px;
   font-weight: 700;
-  color: var(--text);
-  border-bottom: 1px solid var(--border);
+  color: var(--tertiary-dark);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .qt-kanban-count {
@@ -462,7 +462,7 @@
 
 .qt-kanban-card {
   background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.06);
+  border: 1px solid var(--surface-hover);
   border-radius: 8px;
   padding: 10px 10px 8px;
   transition: box-shadow 0.12s;
@@ -484,7 +484,7 @@
 .qt-card-name {
   font-size: 12px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--tertiary-dark);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -570,7 +570,7 @@
   font-size: 10px;
   color: #475569;
   padding: 8px;
-  border: 1px dashed rgba(255,255,255,0.08);
+  border: 1px dashed var(--neutral-100);
   border-radius: 6px;
 }
 
@@ -590,7 +590,7 @@
   padding: 10px 18px;
   font-size: 13px;
   font-weight: 600;
-  color: var(--text);
+  color: var(--tertiary-dark);
   display: flex;
   align-items: center;
   gap: 8px;

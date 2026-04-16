@@ -1,7 +1,8 @@
 /* AI Lab */
 .ailab-page { animation: fadeIn 0.4s ease; }
 .ailab-tabs { margin-bottom: var(--space-6); }
-.pp-card { background: var(--surface-card); border: var(--border); border-radius: var(--radius-lg); padding: var(--space-5); margin-bottom: var(--space-4); box-shadow: var(--shadow-xs); }
+.pp-card { background: var(--surface-card); border: var(--border); border-radius: var(--radius-lg); padding: var(--space-5); margin-bottom: var(--space-4); box-shadow: var(--shadow-xs); transition: box-shadow 0.2s ease, transform 0.2s ease; }
+.pp-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
 .pp-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-3); }
 .pp-card-lead { display: flex; align-items: center; gap: var(--space-3); }
 .pp-card-name { font-family: var(--font-heading); font-size: var(--text-md); font-weight: 700; color: var(--tertiary-dark); }
@@ -16,7 +17,8 @@
 .pp-confidence-text { font-size: 11px; font-weight: 700; min-width: 30px; }
 
 /* Icebreaker */
-.ib-card { background: var(--surface-card); border: var(--border); border-radius: var(--radius-lg); padding: var(--space-5); margin-bottom: var(--space-4); box-shadow: var(--shadow-xs); }
+.ib-card { background: var(--surface-card); border: var(--border); border-radius: var(--radius-lg); padding: var(--space-5); margin-bottom: var(--space-4); box-shadow: var(--shadow-xs); transition: box-shadow 0.2s ease, transform 0.2s ease; }
+.ib-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
 .ib-source { font-size: 12px; color: var(--neutral-400); margin-bottom: var(--space-2); }
 .ib-source-text { font-size: 13px; color: var(--neutral-500); font-style: italic; line-height: 1.5; margin-bottom: var(--space-3); padding: var(--space-3); background: var(--neutral-50); border-radius: var(--radius-md); border-left: 3px solid var(--primary); }
 .ib-main { font-size: var(--text-md); color: var(--tertiary-dark); line-height: 1.6; font-weight: 500; padding: var(--space-4); background: linear-gradient(135deg, rgba(16,185,129,0.04), rgba(0,104,83,0.04)); border-radius: var(--radius-md); border: 1.5px solid rgba(16,185,129,0.15); margin-bottom: var(--space-3); }
@@ -27,7 +29,8 @@
 .ib-actions { display: flex; gap: var(--space-2); margin-top: var(--space-3); }
 
 /* Intent Signals */
-.intent-card { background: var(--surface-card); border: var(--border); border-radius: var(--radius-lg); padding: var(--space-5); margin-bottom: var(--space-4); box-shadow: var(--shadow-xs); }
+.intent-card { background: var(--surface-card); border: var(--border); border-radius: var(--radius-lg); padding: var(--space-5); margin-bottom: var(--space-4); box-shadow: var(--shadow-xs); transition: box-shadow 0.2s ease, transform 0.2s ease; }
+.intent-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
 .intent-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-4); }
 .intent-company { font-family: var(--font-heading); font-size: var(--text-lg); font-weight: 700; }
 .intent-score-badge { padding: var(--space-2) var(--space-4); border-radius: var(--radius-full); font-weight: 700; font-size: var(--text-sm); }
@@ -39,7 +42,8 @@
 .signal-date { font-size: 11px; color: var(--neutral-400); min-width: 50px; }
 
 /* Tech Stack */
-.tech-card { background: var(--surface-card); border: var(--border); border-radius: var(--radius-lg); padding: var(--space-5); margin-bottom: var(--space-4); box-shadow: var(--shadow-xs); }
+.tech-card { background: var(--surface-card); border: var(--border); border-radius: var(--radius-lg); padding: var(--space-5); margin-bottom: var(--space-4); box-shadow: var(--shadow-xs); transition: box-shadow 0.2s ease, transform 0.2s ease; }
+.tech-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
 .tech-stack-pills { display: flex; flex-wrap: wrap; gap: 6px; margin: var(--space-3) 0; }
 .tech-pill { padding: 3px 10px; border-radius: var(--radius-full); font-size: 12px; font-weight: 500; background: #6366F115; color: #6366F1; border: 1px solid #6366F130; }
 .tech-opportunity { font-size: 13px; color: var(--primary-dark); padding: var(--space-3); background: var(--primary-ghost); border-radius: var(--radius-md); border-left: 3px solid var(--primary); margin-top: var(--space-3); }

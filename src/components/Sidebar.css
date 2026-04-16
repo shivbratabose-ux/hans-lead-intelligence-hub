@@ -1,4 +1,7 @@
-/* Sidebar */
+/* ======================================================
+   Sidebar — Brand-aligned Navigation
+   ====================================================== */
+
 .sidebar {
   width: var(--sidebar-width);
   height: 100vh;
@@ -6,15 +9,35 @@
   border-right: var(--border);
   display: flex;
   flex-direction: column;
-  transition: width var(--transition-slow);
+  transition: width var(--transition-slow) cubic-bezier(0.22, 1, 0.36, 1);
   flex-shrink: 0;
   z-index: 100;
+  position: relative;
+}
+
+/* Subtle gradient accent line on left edge */
+.sidebar::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 1px;
+  background: linear-gradient(
+    180deg,
+    rgba(16, 185, 129, 0.3) 0%,
+    var(--border-color) 30%,
+    var(--border-color) 70%,
+    rgba(0, 104, 83, 0.2) 100%
+  );
+  z-index: 1;
 }
 
 .sidebar.collapsed {
   width: var(--sidebar-collapsed);
 }
 
+/* Header */
 .sidebar-header {
   display: flex;
   align-items: center;
@@ -38,6 +61,13 @@
   font-size: var(--text-lg);
   font-family: var(--font-heading);
   flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.sidebar-logo:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.35);
 }
 
 .sidebar-brand {
@@ -45,6 +75,7 @@
   flex-direction: column;
   overflow: hidden;
   white-space: nowrap;
+  transition: opacity var(--transition-slow);
 }
 
 .sidebar-brand-name {
@@ -64,9 +95,12 @@
 }
 
 .collapsed .sidebar-brand {
-  display: none;
+  opacity: 0;
+  width: 0;
+  overflow: hidden;
 }
 
+/* Navigation */
 .sidebar-nav {
   flex: 1;
   padding: var(--space-3);
@@ -80,12 +114,14 @@
   text-transform: uppercase;
   letter-spacing: 0.1em;
   padding: var(--space-4) var(--space-3) var(--space-2);
+  animation: fadeIn 0.4s ease both;
 }
 
 .collapsed .sidebar-section-label {
   display: none;
 }
 
+/* Nav Links */
 .sidebar-link {
   display: flex;
   align-items: center;
@@ -96,17 +132,35 @@
   font-size: var(--text-sm);
   font-weight: 500;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: all 0.2s ease;
   text-decoration: none;
   position: relative;
   margin-bottom: 2px;
+  overflow: hidden;
+}
+
+/* Hover fill effect */
+.sidebar-link::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--primary-ghost);
+  border-radius: inherit;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.25s ease;
+  z-index: -1;
+}
+
+.sidebar-link:hover::after {
+  transform: scaleX(1);
 }
 
 .sidebar-link:hover {
-  background: var(--primary-ghost);
   color: var(--primary-dark);
 }
 
+/* Active state */
 .sidebar-link.active {
   background: var(--primary-ghost);
   color: var(--primary);
@@ -123,33 +177,51 @@
   height: 24px;
   background: var(--primary);
   border-radius: 0 3px 3px 0;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
+}
+
+.sidebar-link.active::after {
+  transform: scaleX(1);
 }
 
 .sidebar-link svg {
   width: 20px;
   height: 20px;
   flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.sidebar-link:hover svg {
+  transform: translateX(1px);
 }
 
 .sidebar-link-text {
   white-space: nowrap;
   overflow: hidden;
+  transition: opacity var(--transition-slow);
 }
 
 .collapsed .sidebar-link-text {
-  display: none;
+  opacity: 0;
+  width: 0;
 }
 
+/* Badges */
 .sidebar-link-badge {
   margin-left: auto;
-  background: var(--danger);
+  background: var(--primary);
   color: white;
   font-size: 10px;
   font-weight: 700;
-  padding: 1px 6px;
+  padding: 1px 7px;
   border-radius: var(--radius-full);
   min-width: 20px;
   text-align: center;
+  transition: transform 0.2s ease;
+}
+
+.sidebar-link:hover .sidebar-link-badge {
+  transform: scale(1.05);
 }
 
 .collapsed .sidebar-link-badge {
@@ -161,6 +233,7 @@
   font-size: 9px;
 }
 
+/* Footer */
 .sidebar-footer {
   border-top: var(--border);
   padding: var(--space-3);
@@ -180,30 +253,36 @@
   cursor: pointer;
   transition: all var(--transition-fast);
 }
+
 .sidebar-collapse-btn:hover {
   background: var(--surface-hover);
   color: var(--tertiary);
 }
+
 .sidebar-collapse-btn svg {
   width: 18px;
   height: 18px;
+  transition: transform 0.25s ease;
+}
+
+.sidebar-collapse-btn:hover svg {
+  transform: translateX(-2px);
 }
 
 /* ── CRM Handoff Link ── */
 .sidebar-crm-link {
   color: #06B6D4 !important;
-  border: 1px solid rgba(6,182,212,0.25);
+  border: 1px solid rgba(6, 182, 212, 0.25);
   margin-top: 2px;
 }
+
 .sidebar-crm-link:hover {
-  background: rgba(6,182,212,0.1) !important;
-  border-color: rgba(6,182,212,0.5);
+  background: rgba(6, 182, 212, 0.1) !important;
+  border-color: rgba(6, 182, 212, 0.5);
   color: #22D3EE !important;
 }
-.sidebar-link-badge {
-  background: var(--primary);
-}
-/* Override NEW badge color to green */
+
+/* Override badge colors */
 .sidebar-link[href="/qualify"] .sidebar-link-badge,
 a.sidebar-link.active .sidebar-link-badge {
   background: #10B981;

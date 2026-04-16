@@ -54,7 +54,7 @@
   display: flex;
   align-items: center;
   gap: 16px;
-  background: rgba(255,255,255,0.03);
+  background: var(--neutral-50);
   border: 1px solid;
   border-radius: 12px;
   padding: 14px 16px;
@@ -107,7 +107,7 @@
 .dq-gap-contact-name {
   font-size: 13px;
   font-weight: 600;
-  color: var(--text, #1E293B);
+  color: var(--tertiary-dark);
 }
 
 .dq-gap-contact-co {
@@ -124,8 +124,8 @@
   height: 10px;
   border-radius: 5px;
   overflow: hidden;
-  background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.08);
+  background: var(--neutral-100);
+  border: 1px solid var(--neutral-200);
 }
 
 .dq-gap-bar-fill {
@@ -218,7 +218,7 @@
 .dq-gap-field-name {
   font-size: 12px;
   font-weight: 600;
-  color: var(--text, #1E293B);
+  color: var(--tertiary-dark);
 }
 
 .dq-gap-field-tip {
@@ -283,8 +283,8 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
+  background: var(--neutral-50);
+  border: 1px solid var(--neutral-200);
   border-radius: 6px;
   padding: 5px 8px;
 }
@@ -292,7 +292,7 @@
 .dq-gap-sugg-val {
   font-family: 'Courier New', monospace;
   font-size: 11px;
-  color: var(--text, #1E293B);
+  color: var(--tertiary-dark);
   flex: 1;
   min-width: 0;
   overflow: hidden;
@@ -321,12 +321,12 @@
 
 .dq-gap-sugg-btn.copy {
   background: transparent;
-  border-color: rgba(255,255,255,0.1);
+  border-color: var(--neutral-200);
   color: #64748B;
 }
 .dq-gap-sugg-btn.copy:hover {
-  background: rgba(255,255,255,0.06);
-  color: var(--text, #1E293B);
+  background: var(--surface-hover);
+  color: var(--tertiary-dark);
 }
 
 .dq-gap-sugg-btn.apply {
@@ -398,7 +398,7 @@
 }
 
 .dq-gap-proj-text strong {
-  color: var(--text, #1E293B);
+  color: var(--tertiary-dark);
 }
 
 /* ── Perfect State ─────────────────────────────────────── */
@@ -430,7 +430,7 @@
   display: flex;
   align-items: stretch;
   gap: 16px;
-  background: var(--surface, #fff);
+  background: var(--surface-card);
   border: 1px solid var(--border-color, #E2E8F0);
   border-radius: 12px;
   padding: 12px 16px;

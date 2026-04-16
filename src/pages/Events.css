@@ -12,7 +12,7 @@
   border-radius: var(--radius-lg);
   overflow: hidden;
   box-shadow: var(--shadow-xs);
-  transition: all var(--transition-base);
+  transition: all 0.25s ease;
   cursor: pointer;
 }
 .event-card:hover {
@@ -22,6 +22,11 @@
 .event-card-banner {
   height: 8px;
   background: linear-gradient(90deg, var(--primary), var(--secondary));
+  background-size: 200% 100%;
+  transition: background-position 0.5s ease;
+}
+.event-card:hover .event-card-banner {
+  background-position: 100% 0;
 }
 .event-card-banner.completed { background: linear-gradient(90deg, #94A3B8, #CBD5E1); }
 .event-card-banner.upcoming { background: linear-gradient(90deg, var(--warning), #F97316); }

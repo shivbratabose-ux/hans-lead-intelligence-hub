@@ -138,6 +138,10 @@
   background: var(--primary-ghost);
 }
 
+.inbox-table tbody tr:hover td:first-child {
+  box-shadow: inset 3px 0 0 var(--primary);
+}
+
 .inbox-table .checkbox-col {
   width: 40px;
 }

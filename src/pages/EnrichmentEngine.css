@@ -17,7 +17,8 @@
 
 /* Missing Data Dashboard */
 .missing-data-dashboard { display: grid; grid-template-columns: repeat(6, 1fr); gap: var(--space-3); margin-bottom: var(--space-5); }
-.missing-stat-card { background: var(--surface-card); border: var(--border); border-radius: var(--radius-lg); padding: var(--space-4); text-align: center; position: relative; overflow: hidden; }
+.missing-stat-card { background: var(--surface-card); border: var(--border); border-radius: var(--radius-lg); padding: var(--space-4); text-align: center; position: relative; overflow: hidden; transition: transform 0.2s ease, box-shadow 0.2s ease; }
+.missing-stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
 .missing-stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
 .missing-stat-card.red::before { background: #EF4444; }
 .missing-stat-card.red svg { color: #EF4444; }

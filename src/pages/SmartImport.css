@@ -27,8 +27,8 @@
 .paste-stats { font-size: 11px; color: var(--neutral-400); }
 
 /* Upload Area */
-.upload-dropzone { border: 2px dashed var(--neutral-200); border-radius: var(--radius-lg); padding: var(--space-6) var(--space-4); text-align: center; position: relative; cursor: pointer; transition: all var(--transition-fast); margin-bottom: var(--space-4); }
-.upload-dropzone:hover { border-color: var(--primary); background: var(--primary-ghost); }
+.upload-dropzone { border: 2px dashed var(--neutral-200); border-radius: var(--radius-lg); padding: var(--space-6) var(--space-4); text-align: center; position: relative; cursor: pointer; transition: all 0.3s ease; margin-bottom: var(--space-4); }
+.upload-dropzone:hover { border-color: var(--primary); background: var(--primary-ghost); transform: scale(1.01); box-shadow: 0 0 0 4px rgba(16,185,129,0.06); }
 .upload-icon { color: var(--neutral-300); margin-bottom: 8px; }
 .upload-dropzone p { font-size: 13px; color: var(--neutral-500); margin: 4px 0; }
 .upload-formats { font-size: 10px; color: var(--neutral-400); }

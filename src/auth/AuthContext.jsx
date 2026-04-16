@@ -39,15 +39,21 @@ export function AuthProvider({ children }) {
     initAuth();
 
     // Listen for auth state changes (login, logout, token refresh)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        if (session?.user) {
-          setUser(extractUserData(session.user));
-        } else {
-          setUser(null);
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(
+        (_event, session) => {
+          if (session?.user) {
+            const meta = session.user.user_metadata || {};
+            if (meta.status === 'pending') {
+              supabase.auth.signOut();
+              setUser(null);
+            } else {
+              setUser(extractUserData(session.user));
+            }
+          } else {
+            setUser(null);
+          }
         }
-      }
-    );
+      );
 
     return () => subscription?.unsubscribe();
   }, []);
@@ -63,6 +69,12 @@ export function AuthProvider({ children }) {
         return { success: false, error: error.message };
       }
 
+      const meta = data.user.user_metadata || {};
+      if (meta.status === 'pending') {
+        await supabase.auth.signOut();
+        return { success: false, error: 'Your account is pending admin approval.' };
+      }
+
       const userData = extractUserData(data.user);
       setUser(userData);
       return { success: true };
@@ -74,6 +86,33 @@ export function AuthProvider({ children }) {
   const logout = async () => {
     await supabase.auth.signOut();
     setUser(null);
+  };
+
+  const signup = async (email, password, name) => {
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            name: name,
+            role: 'Sales Rep',
+            status: 'pending' // New users must be approved by an Admin
+          }
+        }
+      });
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+      
+      // Explicitly sign out right after sign up so they don't enter the app in a pending state
+      await supabase.auth.signOut();
+
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: 'Connection error. Please try again.' };
+    }
   };
 
   const changePassword = async (currentPassword, newPassword) => {
@@ -125,7 +164,7 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider value={{
-      user, login, logout, addUser, changePassword, resetUserPassword,
+      user, login, signup, logout, addUser, changePassword, resetUserPassword,
       loading, isAdmin: user?.role === 'Admin'
     }}>
       {children}
