@@ -11,14 +11,6 @@ const ICONS = { database: Database, mail: Mail, 'message-circle': MessageCircle,
 const CONDITION_FIELDS = ['product', 'location', 'industry', 'companySize', 'score', 'source', 'country', 'contactType', 'region'];
 const OPERATORS = ['equals', 'contains', 'in', 'gte', 'lte', 'not_equals'];
 const OPERATOR_LABELS = { equals: '=', contains: 'contains', in: 'in', gte: '≥', lte: '≤', not_equals: '≠' };
-const TEAM_MEMBERS = [
-  { id: 'U001', name: 'Priya Mehta' },
-  { id: 'U002', name: 'Amit Desai' },
-  { id: 'U003', name: 'Kavita Singh' },
-  { id: 'U004', name: 'Rajiv Khanna' },
-  { id: 'U005', name: 'Sunita Rao' },
-  { id: 'U006', name: 'Rohit Sharma' },
-];
 
 export default function Admin() {
   const { addUser: authAddUser, resetUserPassword } = useAuth();
@@ -37,22 +29,20 @@ export default function Admin() {
   const [resetPwMsg, setResetPwMsg] = useState(null);
 
   useEffect(() => {
-    if (tab === 'Users') {
-      const fetchUsers = async () => {
-        const { data, error } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
-        if (data) {
-          // Map DB columns to frontend variables if needed
-          const mapped = data.map(u => ({
-            ...u,
-            leadsAssigned: u.leads_assigned || 0,
-            conversionRate: u.conversion_rate || 0
-          }));
-          setUsers(mapped);
-        }
-      };
-      fetchUsers();
-    }
-  }, [tab]);
+    const fetchUsers = async () => {
+      const { data, error } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
+      if (data) {
+        // Map DB columns to frontend variables if needed
+        const mapped = data.map(u => ({
+          ...u,
+          leadsAssigned: u.leads_assigned || 0,
+          conversionRate: u.conversion_rate || 0
+        }));
+        setUsers(mapped);
+      }
+    };
+    fetchUsers();
+  }, []);
 
   const handleWeightChange = (id, value) => {
     setCriteria(prev => prev.map(c => c.id === id ? { ...c, currentWeight: parseInt(value) } : c));
@@ -102,8 +92,8 @@ export default function Admin() {
         name: '',
         conditions: [{ field: 'product', operator: 'equals', value: '' }],
         action: 'assign',
-        assignTo: TEAM_MEMBERS[0].id,
-        assignName: TEAM_MEMBERS[0].name,
+        assignTo: users.length > 0 ? users[0].id : '',
+        assignName: users.length > 0 ? users[0].name : '',
         priority: Math.max(...rules.map(r => r.priority), 0) + 1,
         active: true,
       });
@@ -151,7 +141,7 @@ export default function Admin() {
   };
 
   const updateAssign = (memberId) => {
-    const member = TEAM_MEMBERS.find(m => m.id === memberId);
+    const member = users.find(m => m.id === memberId);
     setEditingRule(prev => ({ ...prev, assignTo: memberId, assignName: member?.name || '' }));
   };
 
@@ -313,7 +303,7 @@ export default function Admin() {
                     <option value="notify">Notify</option>
                   </select>
                   <select value={editingRule.assignTo} onChange={e => updateAssign(e.target.value)} style={{ flex: 1 }}>
-                    {TEAM_MEMBERS.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                    {users.length > 0 ? users.map(m => <option key={m.id} value={m.id}>{m.name}</option>) : <option value="">No Active Users</option>}
                   </select>
                 </div>
               </div>
