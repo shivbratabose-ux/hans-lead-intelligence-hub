@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Database, Mail, MessageCircle, CalendarDays, Search, Link, ArrowRight, Shield, Plus, Edit2, Trash2, X, ChevronUp, ChevronDown, Power, Save, GripVertical, Copy, Key, Eye, EyeOff, RotateCcw } from 'lucide-react';
 import { SCORING_CRITERIA, SCORE_THRESHOLDS, ROUTING_RULES, INTEGRATIONS, AUDIT_LOG } from '../data/scoringRules';
-import USERS from '../data/users';
+import { supabase } from '../lib/supabase';
 import { useAuth } from '../auth/AuthContext';
 import './Admin.css';
 
@@ -30,11 +30,29 @@ export default function Admin() {
   const [showEditor, setShowEditor] = useState(false);
 
   // User management state
-  const [users, setUsers] = useState(USERS.map(u => ({ ...u })));
+  const [users, setUsers] = useState([]);
   const [editingUser, setEditingUser] = useState(null);
   const [showUserEditor, setShowUserEditor] = useState(false);
   const [showPasswordField, setShowPasswordField] = useState(false);
   const [resetPwMsg, setResetPwMsg] = useState(null);
+
+  useEffect(() => {
+    if (tab === 'Users') {
+      const fetchUsers = async () => {
+        const { data, error } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
+        if (data) {
+          // Map DB columns to frontend variables if needed
+          const mapped = data.map(u => ({
+            ...u,
+            leadsAssigned: u.leads_assigned || 0,
+            conversionRate: u.conversion_rate || 0
+          }));
+          setUsers(mapped);
+        }
+      };
+      fetchUsers();
+    }
+  }, [tab]);
 
   const handleWeightChange = (id, value) => {
     setCriteria(prev => prev.map(c => c.id === id ? { ...c, currentWeight: parseInt(value) } : c));
@@ -367,19 +385,20 @@ export default function Admin() {
           )}
           <table className="inbox-table">
             <thead>
-              <tr><th>User</th><th>Email</th><th>Role</th><th>Region</th><th>Leads</th><th>Qualified</th><th>Conv. %</th><th>Actions</th></tr>
+              <tr><th>User</th><th>Email</th><th>Role</th><th>Status</th><th>Region</th><th>Leads</th><th>Qualified</th><th>Conv. %</th><th>Actions</th></tr>
             </thead>
             <tbody>
               {users.map(u => (
                 <tr key={u.id} className="user-row">
                   <td>
                     <div className="lead-name-cell">
-                      <div className="avatar" style={{ background: u.avatar }}>{u.initials}</div>
+                      <div className="avatar" style={{ background: u.avatar || '#10B981' }}>{u.initials || '?'}</div>
                       <span style={{ fontWeight: 600 }}>{u.name}</span>
                     </div>
                   </td>
                   <td style={{ fontSize: 13, color: '#64748B' }}>{u.email}</td>
                   <td><span className={`badge ${u.role === 'Admin' ? 'badge-danger' : u.role === 'Sales Manager' ? 'badge-warning' : u.role === 'Marketing' ? 'badge-info' : 'badge-primary'}`}>{u.role}</span></td>
+                  <td><span className={`badge ${u.status === 'approved' ? 'badge-success' : 'badge-warning'}`}>{u.status}</span></td>
                   <td style={{ fontSize: 13, color: '#64748B' }}>{u.region}</td>
                   <td style={{ fontWeight: 700 }}>{u.leadsAssigned}</td>
                   <td style={{ fontWeight: 600, color: '#10B981' }}>{u.qualified}</td>
@@ -402,8 +421,9 @@ export default function Admin() {
                           setTimeout(() => setResetPwMsg(null), 3000);
                         }
                       }} title="Reset Password" style={{ color: '#F59E0B' }}><Key size={12} /></button>
-                      <button className="btn btn-ghost btn-xs rule-delete" onClick={() => {
-                        if (window.confirm(`Delete user ${u.name}? This cannot be undone.`)) {
+                      <button className="btn btn-ghost btn-xs rule-delete" onClick={async () => {
+                        if (window.confirm(`Delete user ${u.name}? Note: Trashing metadata, actual auth removal requires SuperAdmin.`)) {
+                          await supabase.from('profiles').delete().eq('id', u.id);
                           setUsers(prev => prev.filter(x => x.id !== u.id));
                         }
                       }} title="Delete"><Trash2 size={12} /></button>
@@ -499,6 +519,14 @@ export default function Admin() {
                     <option value="All">All</option>
                   </select>
                 </div>
+                <div className="editor-row">
+                  <label>Access Status</label>
+                  <select value={editingUser.status} onChange={e => setEditingUser(prev => ({ ...prev, status: e.target.value }))} style={{ width: '100%', padding: '8px 10px', border: 'var(--border)', borderRadius: 'var(--radius-md)', fontSize: 13 }}>
+                    <option value="approved">Approved</option>
+                    <option value="pending">Pending</option>
+                    <option value="suspended">Suspended</option>
+                  </select>
+                </div>
               </div>
               <div className="editor-grid-3">
                 <div className="editor-row">
@@ -520,33 +548,41 @@ export default function Admin() {
             </div>
             <div className="modal-footer">
               <button className="btn btn-ghost" onClick={() => setShowUserEditor(false)}>Cancel</button>
-              <button className="btn btn-primary" onClick={() => {
+              <button className="btn btn-primary" onClick={async () => {
                 if (!editingUser.name.trim()) { alert('Name is required'); return; }
                 if (!editingUser.email.trim()) { alert('Email is required'); return; }
-                // For new users, password is required
+                
                 const isNew = !users.find(u => u.id === editingUser.id);
-                if (isNew && (!editingUser.password || editingUser.password.length < 6)) {
-                  alert('Password is required (min 6 characters) for new users');
-                  return;
+                if (isNew) {
+                   alert('Creating new users directly in Admin panel is deprecated. Please advise the user to use the Sign Up page first, then you can configure their role here.');
+                   return;
                 }
-                // Sync with auth context
-                authAddUser({
-                  email: editingUser.email,
-                  password: editingUser.password || undefined,
-                  name: editingUser.name,
-                  role: editingUser.role,
-                  initials: editingUser.initials,
-                  avatar: editingUser.avatar,
-                });
-                // If password was changed for existing user, sync it
-                if (!isNew && showPasswordField && editingUser.password && editingUser.password.length >= 6) {
+
+                if (showPasswordField && editingUser.password && editingUser.password.length >= 6) {
                   resetUserPassword(editingUser.email, editingUser.password);
                 }
-                setUsers(prev => {
-                  const exists = prev.find(u => u.id === editingUser.id);
-                  if (exists) return prev.map(u => u.id === editingUser.id ? editingUser : u);
-                  return [...prev, editingUser];
-                });
+
+                const { error: updateError } = await supabase
+                  .from('profiles')
+                  .update({
+                    name: editingUser.name,
+                    role: editingUser.role,
+                    region: editingUser.region,
+                    status: editingUser.status,
+                    avatar: editingUser.avatar,
+                    initials: editingUser.initials,
+                    leads_assigned: editingUser.leadsAssigned,
+                    qualified: editingUser.qualified,
+                    conversion_rate: editingUser.conversionRate
+                  })
+                  .eq('id', editingUser.id);
+                  
+                if (updateError) {
+                  alert('Error updating user: ' + updateError.message);
+                  return;
+                }
+
+                setUsers(prev => prev.map(u => u.id === editingUser.id ? editingUser : u));
                 setShowUserEditor(false);
                 setEditingUser(null);
                 setShowPasswordField(false);

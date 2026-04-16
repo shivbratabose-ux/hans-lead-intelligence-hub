@@ -8,16 +8,37 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   // Extract our app-level user data from a Supabase auth user
-  const extractUserData = (authUser) => {
+  const extractUserData = async (authUser) => {
     if (!authUser) return null;
     const meta = authUser.user_metadata || {};
+    let role = meta.role || 'Sales Rep';
+    let status = meta.status || 'pending';
+    let name = meta.name || authUser.email?.split('@')[0] || 'User';
+    let initials = meta.initials || (name || 'U').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+    let avatar = meta.avatar || '#10B981';
+
+    try {
+      const { data, error } = await supabase.from('profiles').select('*').eq('id', authUser.id).single();
+      if (data && !error) {
+        role = data.role || role;
+        status = data.status || status;
+        name = data.name || name;
+        initials = data.initials || initials;
+        avatar = data.avatar || avatar;
+      }
+    } catch(e) {
+      console.error('Error fetching user profile:', e);
+    }
+
     return {
       id: authUser.id,
       email: authUser.email,
-      name: meta.name || authUser.email?.split('@')[0] || 'User',
-      role: meta.role || 'Sales Rep',
-      initials: meta.initials || (meta.name || 'U').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase(),
-      avatar: meta.avatar || '#10B981',
+      name,
+      role,
+      status,
+      initials,
+      avatar,
+      rawMetaStatus: meta.status
     };
   };
 
@@ -27,7 +48,8 @@ export function AuthProvider({ children }) {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
-          setUser(extractUserData(session.user));
+          const userData = await extractUserData(session.user);
+          setUser(userData);
         }
       } catch (err) {
         console.error('Auth session error:', err);
@@ -42,13 +64,14 @@ export function AuthProvider({ children }) {
       const { data: { subscription } } = supabase.auth.onAuthStateChange(
         (_event, session) => {
           if (session?.user) {
-            const meta = session.user.user_metadata || {};
-            if (meta.status === 'pending') {
-              supabase.auth.signOut();
-              setUser(null);
-            } else {
-              setUser(extractUserData(session.user));
-            }
+            extractUserData(session.user).then(userData => {
+              if (userData.status === 'pending') {
+                supabase.auth.signOut();
+                setUser(null);
+              } else {
+                setUser(userData);
+              }
+            });
           } else {
             setUser(null);
           }
@@ -69,13 +92,13 @@ export function AuthProvider({ children }) {
         return { success: false, error: error.message };
       }
 
-      const meta = data.user.user_metadata || {};
-      if (meta.status === 'pending') {
+      const userData = await extractUserData(data.user);
+      
+      if (userData.status === 'pending') {
         await supabase.auth.signOut();
         return { success: false, error: 'Your account is pending admin approval.' };
       }
 
-      const userData = extractUserData(data.user);
       setUser(userData);
       return { success: true };
     } catch (err) {
